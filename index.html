@@ -108,6 +108,53 @@
             font-size: 2.5rem;
             font-weight: 700;
         }
+        
+        .search-container {
+            max-width: 500px;
+            margin: 0 auto 3rem auto;
+            position: relative;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            font-size: 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            display: none;
+        }
 
         .reports-grid {
             display: grid;
@@ -269,7 +316,19 @@
             <div class="section-title">
                 <h2>Explore the Archive</h2>
             </div>
-            <div class="reports-grid">
+            
+            <div class="search-container">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 10.607a7.5 7.5 0 0010.607 5.196z" />
+                </svg>
+                <input type="text" class="search-input" placeholder="Search reports by title or description..." id="searchInput">
+            </div>
+            
+            <div class="no-results" id="noResults">
+                <p>No reports found matching your search.</p>
+            </div>
+            
+            <div class="reports-grid" id="reportsGrid">
                 
                 <article class="report-card">
                     <div class="card-content">
@@ -479,6 +538,54 @@
         <p>&copy; 2025 Neurophasia.com &mdash; A Non-Commercial Project.</p>
         <p>For inquiries, please contact <a href="mailto:hi@oliverdougherty.com">hi@oliverdougherty.com</a></p>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            const reportsGrid = document.getElementById('reportsGrid');
+            const noResults = document.getElementById('noResults');
+            const reportCards = document.querySelectorAll('.report-card');
+
+            function performSearch() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                let visibleCount = 0;
+
+                reportCards.forEach(card => {
+                    const title = card.querySelector('h3').textContent.toLowerCase();
+                    const description = card.querySelector('p').textContent.toLowerCase();
+                    const matches = title.includes(searchTerm) || description.includes(searchTerm);
+
+                    if (matches) {
+                        card.style.display = 'flex';
+                        visibleCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                // Show/hide no results message
+                if (visibleCount === 0 && searchTerm !== '') {
+                    noResults.style.display = 'block';
+                    reportsGrid.style.display = 'none';
+                } else {
+                    noResults.style.display = 'none';
+                    reportsGrid.style.display = 'grid';
+                }
+            }
+
+            // Search on input
+            searchInput.addEventListener('input', performSearch);
+
+            // Clear search on escape key
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    searchInput.value = '';
+                    performSearch();
+                    searchInput.blur();
+                }
+            });
+        });
+    </script>
 
 </body>
 </html>

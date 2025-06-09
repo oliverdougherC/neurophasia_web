@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lasers - Neurophasia</title>
+    <!--
+      Application Structure Plan:
+      The application is a single-page thematic dashboard. The structure is designed for exploration, moving from foundational concepts to specific technologies and applications.
+      1. Introduction & Core Principles: Interactive diagram explaining the basics.
+      2. Historical Context: A visual timeline of key milestones.
+      3. Laser Explorer: The core interactive database allowing users to filter and compare laser types, dynamically updating charts and information panels.
+      4. Wavelength Spectrum: An interactive visual to contextualize laser output.
+      5. Operational Modes: A comparative view of different laser operation methods.
+      6. Applications Showcase: A modular display of various laser uses.
+      7. Safety Guide: An interactive guide to laser safety classifications.
+      This non-linear design enhances engagement and makes dense technical information more accessible.
+    -->
+    <!--
+      Visualization & Content Choices:
+      The report's dense text and data are transformed into interactive elements for better comprehension.
+      - To compare laser types: An interactive scatter plot (Wavelength vs. Max Power) and a bar chart for operational modes, both using Chart.js. User selection from a list dynamically updates these visuals and a detailed info panel. This provides a more effective comparison than static tables.
+      - To explain history: A clean, visual timeline built with HTML and modern CSS.
+      - To organize applications and safety: Interactive, clickable cards and tabs to reduce cognitive load by revealing information on demand.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS for fine-tuning and specific component styles not easily achieved with Tailwind alone */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Light neutral background for a clean, scientific feel */
+            color: #212529; /* High-contrast text for readability */
+        }
+
+        /* Active state for navigation links */
+        .nav-link.active {
+            color: #0d6efd;
+            border-bottom-color: #0d6efd;
+        }
+
+        /* Base styles for filter and tab buttons */
+        .btn-secondary, .safety-tab {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* Active state for filter buttons, providing clear visual feedback */
+        .btn-secondary.active {
+            background-color: #0d6efd;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Enhanced card hover effect for more interactivity */
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+
+        /* Chart container to ensure responsiveness */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+        }
+
+        /* Styling for the historical timeline */
+        .timeline-line {
+            position: absolute;
+            left: 14px; /* Centered with the dot */
+            top: 10px;
+            bottom: 10px;
+            width: 4px;
+            background-color: #dee2e6;
+            z-index: 0;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 0;
+            width: 30px;
+            height: 30px;
+            background-color: white;
+            border: 4px solid #0d6efd; /* Primary accent color */
+            border-radius: 50%;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation with sticky behavior and backdrop filter -->
+    <header class="bg-white/90 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <a href="https://neurophasia.com" class="text-xl md:text-2xl font-bold text-gray-800">Neurophasia</a>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#principles" class="nav-link py-2 text-gray-600 hover:text-blue-600 border-b-2 border-transparent">Principles</a>
+                    <a href="#timeline" class="nav-link py-2 text-gray-600 hover:text-blue-600 border-b-2 border-transparent">History</a>
+                    <a href="#explorer" class="nav-link py-2 text-gray-600 hover:text-blue-600 border-b-2 border-transparent">Explorer</a>
+                    <a href="#applications" class="nav-link py-2 text-gray-600 hover:text-blue-600 border-b-2 border-transparent">Applications</a>
+                    <a href="#safety" class="nav-link py-2 text-gray-600 hover:text-blue-600 border-b-2 border-transparent">Safety</a>
+                </div>
+                <button id="mobile-menu-button" class="md:hidden p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m4 6H4"></path></svg>
+                </button>
+            </div>
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+                <a href="#principles" class="block nav-link text-gray-600 hover:text-blue-600 py-2">Principles</a>
+                <a href="#timeline" class="block nav-link text-gray-600 hover:text-blue-600 py-2">History</a>
+                <a href="#explorer" class="block nav-link text-gray-600 hover:text-blue-600 py-2">Explorer</a>
+                <a href="#applications" class="block nav-link text-gray-600 hover:text-blue-600 py-2">Applications</a>
+                <a href="#safety" class="block nav-link text-gray-600 hover:text-blue-600 py-2">Safety</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <!-- Section: Principles of Lasers -->
+        <section id="principles" class="mb-24 scroll-mt-20">
+            <div class="text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">The Dawn of Coherent Light</h2>
+                <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                    A laser isn't just a strong light; it's a fundamentally different kind, born from the quantum principle of <strong>Light Amplification by Stimulated Emission of Radiation</strong>. This section breaks down the core components that turn random energy into a precise, powerful beam.
+                </p>
+            </div>
+            <div class="card p-8">
+                <h3 class="text-2xl font-semibold mb-8 text-center">Anatomy of a Laser</h3>
+                <div class="grid md:grid-cols-3 gap-8 items-start text-left">
+                    <!-- Component 1: Pump Source -->
+                    <div class="flex flex-col items-center text-center">
+                        <div class="flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-4 ring-8 ring-blue-50">
+                            <span class="text-4xl">⚡️</span>
+                        </div>
+                        <h4 class="text-xl font-semibold mb-2">1. Pump Source</h4>
+                        <p class="text-gray-600">Provides energy (e.g., electricity, another light) to excite the atoms within the gain medium.</p>
+                    </div>
+                    <!-- Component 2: Gain Medium -->
+                    <div class="flex flex-col items-center text-center">
+                        <div class="flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4 ring-8 ring-green-50">
+                             <span class="text-4xl">⚛️</span>
+                        </div>
+                        <h4 class="text-xl font-semibold mb-2">2. Gain Medium</h4>
+                        <p class="text-gray-600">A material (solid, liquid, or gas) that stores energy. When stimulated, its atoms release identical photons.</p>
+                    </div>
+                    <!-- Component 3: Optical Resonator -->
+                    <div class="flex flex-col items-center text-center">
+                         <div class="flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-4 ring-8 ring-red-50">
+                            <span class="text-4xl">↔️</span>
+                        </div>
+                        <h4 class="text-xl font-semibold mb-2">3. Optical Resonator</h4>
+                        <p class="text-gray-600">Two mirrors that trap photons, bouncing them through the gain medium to amplify the light. One mirror is partially transparent, allowing the beam to exit.</p>
+                    </div>
+                </div>
+                 <div class="mt-8 pt-8 border-t text-center">
+                    <h4 class="text-xl font-semibold mb-2">The Key Process: Stimulated Emission</h4>
+                    <p class="text-gray-600 max-w-2xl mx-auto">An incoming photon with the correct energy stimulates an excited atom to release a second, identical photon—same wavelength, phase, and direction. This chain reaction amplifies light, creating the coherent laser beam.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Historical Timeline -->
+        <section id="timeline" class="mb-24 scroll-mt-20">
+            <div class="text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">A Century of Light: Key Milestones</h2>
+                <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                    The laser's development wasn't a single event but a cascade of theoretical insights and engineering triumphs. This timeline highlights the pivotal moments that turned an idea into one of the most versatile tools ever created.
+                </p>
+            </div>
+            <div class="relative max-w-2xl mx-auto">
+                <div class="timeline-line"></div>
+                <!-- Timeline items are now relative to the parent for easier positioning -->
+                <div class="relative pl-12 pb-8 timeline-item">
+                    <h4 class="text-xl font-semibold">1917: Theoretical Foundation</h4>
+                    <p class="text-gray-600">Albert Einstein predicts the existence of "stimulated emission," the quantum process that makes lasers possible.</p>
+                </div>
+                <div class="relative pl-12 pb-8 timeline-item">
+                    <h4 class="text-xl font-semibold">1953: The Maser</h4>
+                    <p class="text-gray-600">Charles Townes and colleagues build the first Maser, amplifying microwaves and proving the principle in practice.</p>
+                </div>
+                <div class="relative pl-12 pb-8 timeline-item">
+                    <h4 class="text-xl font-semibold">1960: The First Laser</h4>
+                    <p class="text-gray-600">Theodore Maiman demonstrates the first working optical laser using a ruby crystal, emitting a beam of red light.</p>
+                </div>
+                <div class="relative pl-12 pb-8 timeline-item">
+                    <h4 class="text-xl font-semibold">1960-1964: Rapid Innovation</h4>
+                    <p class="text-gray-600">The first Gas (HeNe), CO₂, and Semiconductor lasers are developed, leading to a Nobel Prize for foundational work.</p>
+                </div>
+                <div class="relative pl-12 pb-8 timeline-item">
+                    <h4 class="text-xl font-semibold">1970s-1980s: Commercial Age</h4>
+                    <p class="text-gray-600">Lasers enter factories for cutting and welding. Barcode scanners and CD players bring the technology into daily life.</p>
+                </div>
+                 <div class="relative pl-12 timeline-item">
+                    <h4 class="text-xl font-semibold">2018-2023: Probing New Frontiers</h4>
+                    <p class="text-gray-600">Nobel Prizes recognize optical tweezers, ultra-short pulse lasers, and methods for generating attosecond pulses to study electron dynamics.</p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Section: Laser Explorer -->
+        <section id="explorer" class="mb-24 scroll-mt-20">
+            <div class="text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Interactive Laser Explorer</h2>
+                <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                    Lasers are categorized by their 'gain medium'—the material that amplifies light. Use the filters to explore different laser types, updating the charts and info panel to compare their characteristics.
+                </p>
+            </div>
+            
+            <div class="flex flex-wrap justify-center gap-2 mb-8">
+                <button class="btn-secondary px-4 py-2 rounded-lg laser-filter" data-filter="all">All Types</button>
+                <button class="btn-secondary px-4 py-2 rounded-lg laser-filter" data-filter="Gas">Gas</button>
+                <button class="btn-secondary px-4 py-2 rounded-lg laser-filter" data-filter="Solid-State">Solid-State</button>
+                <button class="btn-secondary px-4 py-2 rounded-lg laser-filter" data-filter="Fiber">Fiber</button>
+                <button class="btn-secondary px-4 py-2 rounded-lg laser-filter" data-filter="Semiconductor">Semiconductor</button>
+                <button class="btn-secondary px-4 py-2 rounded-lg laser-filter" data-filter="Liquid">Liquid</button>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Laser List Column -->
+                <div class="md:col-span-1 card p-2 h-[600px] overflow-y-auto">
+                    <ul id="laser-list" class="space-y-1">
+                        <!-- JS populates this -->
+                    </ul>
+                </div>
+
+                <!-- Laser Details Column -->
+                <div class="md:col-span-2 card p-6">
+                    <div id="laser-details" class="min-h-[300px]">
+                        <!-- JS populates this -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="mt-16">
+                <h3 class="text-2xl font-semibold mb-8 text-center">Visualizing Laser Characteristics</h3>
+                <div class="grid md:grid-cols-1 lg:grid-cols-2 gap-12">
+                     <div class="card p-6">
+                        <h4 class="text-xl font-semibold mb-2 text-center">Wavelength vs. Max Power</h4>
+                        <p class="text-center text-sm text-gray-500 mb-4">This scatter plot shows lasers by emission wavelength and max power. Note the logarithmic scales, which reveal the vast range of laser capabilities.</p>
+                        <div class="chart-container">
+                            <canvas id="wavelengthPowerChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card p-6">
+                        <h4 class="text-xl font-semibold mb-2 text-center">Operational Modes & Pulse Duration</h4>
+                        <p class="text-center text-sm text-gray-500 mb-4">Compares laser operation methods. Shorter pulses enable extremely high peak powers for "cold" ablation and studying ultrafast phenomena.</p>
+                         <div class="chart-container">
+                            <canvas id="pulseDurationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Applications -->
+        <section id="applications" class="mb-24 scroll-mt-20">
+             <div class="text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">A World Powered by Lasers</h2>
+                <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                    From heavy industry to delicate surgery, the unique properties of laser light have unlocked countless applications. Click on a card to learn more about where lasers have become indispensable.
+                </p>
+            </div>
+            <div id="app-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- JS populates this -->
+            </div>
+        </section>
+
+        <!-- Section: Safety -->
+        <section id="safety" class="mb-12 scroll-mt-20">
+            <div class="text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Managing the Power: Laser Safety</h2>
+                <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-12">
+                    The power of lasers demands caution. Lasers are categorized into classes based on their potential hazard. Understanding these classes is the first step in safety. Select a class to see its definition.
+                </p>
+            </div>
+            <div class="max-w-4xl mx-auto">
+                <div class="flex flex-wrap justify-center border-b border-gray-200">
+                    <button class="safety-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent" data-target="class1">Class 1</button>
+                    <button class="safety-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent" data-target="class2">Class 2</button>
+                    <button class="safety-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent" data-target="class3b">Class 3B</button>
+                    <button class="safety-tab px-6 py-3 font-semibold text-gray-500 border-b-2 border-transparent" data-target="class4">Class 4</button>
+                </div>
+                <div id="safety-content" class="mt-6">
+                    <!-- JS will populate this -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-gray-800 text-white mt-24">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p class="text-sm text-gray-400 mt-2">Part of the Neurophasia Archive</p>
+        </div>
+    </footer>
+
+    <script>
+        // Data is now organized and namespaced for clarity
+        const laserApp = {
+            data: {
+                lasers: {
+                    "HeNe": { type: "Gas", wavelength: 632.8, power: [0.0005, 0.05], description: "One of the first and most stable gas lasers, known for its excellent beam quality. Its iconic red beam made it a staple in labs and for alignment tasks.", applications: "Alignment, interferometry, holography, education.", color: 'rgba(239, 68, 68, 1)' },
+                    "Argon Ion": { type: "Gas", wavelength: 488, power: [1, 20], description: "A gas laser producing blue and green lines. It was a workhorse for scientific research, medical treatments, and entertainment light shows.", applications: "Retinal photocoagulation, DNA sequencing, spectroscopy.", color: 'rgba(59, 130, 246, 1)' },
+                    "CO2": { type: "Gas", wavelength: 10600, power: [10, 100000], description: "A powerful and efficient molecular gas laser emitting in the far-infrared. It leads industrial cutting and welding of non-metals and thick metals.", applications: "Industrial cutting/welding, skin resurfacing, marking.", color: 'rgba(139, 92, 246, 1)' },
+                    "Excimer": { type: "Gas", wavelength: 248, power: [0, 0], description: "A unique gas laser that emits powerful pulses of ultraviolet (UV) light. It operates by 'cold' ablation, removing material without significant heating.", applications: "LASIK eye surgery, semiconductor photolithography.", color: 'rgba(168, 85, 247, 1)' },
+                    "Ruby": { type: "Solid-State", wavelength: 694.3, power: [0, 0], description: "The first working laser ever demonstrated. This system uses a ruby crystal and operates in pulsed mode, producing high-energy red pulses.", applications: "Holography, tattoo removal, drilling hard materials.", color: 'rgba(219, 39, 119, 1)' },
+                    "Nd:YAG": { type: "Solid-State", wavelength: 1064, power: [0.1, 5000], description: "A highly versatile solid-state laser. It can be operated in both continuous and powerful pulsed modes, making it a workhorse for countless applications.", applications: "Material processing, surgery, rangefinding, tattoo removal.", color: 'rgba(16, 185, 129, 1)' },
+                    "Ti:Sapphire": { type: "Solid-State", wavelength: 800, power: [0.1, 5], description: "The champion of ultrashort pulses. Its broad gain bandwidth allows it to generate femtosecond-duration pulses for studying ultrafast phenomena.", applications: "Ultrafast spectroscopy, multiphoton microscopy.", color: 'rgba(234, 88, 12, 1)' },
+                    "Yb-doped Fiber": { type: "Fiber", wavelength: 1070, power: [10, 50000], description: "A dominant force in industrial lasers, achieving exceptional power, efficiency, and beam quality with excellent thermal management.", applications: "Industrial metal cutting/welding, marking, 3D printing.", color: 'rgba(245, 158, 11, 1)' },
+                    "Er-doped Fiber": { type: "Fiber", wavelength: 1550, power: [0.01, 10], description: "The backbone of modern telecommunications. Its emission wavelength falls perfectly within the low-loss window of optical fibers.", applications: "Telecommunications (EDFA), LIDAR, medical.", color: 'rgba(249, 115, 22, 1)' },
+                    "Dye": { type: "Liquid", wavelength: 590, power: [0.1, 2], description: "A liquid laser known for its wide wavelength tunability. By changing the organic dye, its color can be precisely selected for medical and scientific tasks.", applications: "Spectroscopy, dermatology, isotope separation.", color: 'rgba(220, 38, 38, 1)' },
+                    "AlGaAs Diode": { type: "Semiconductor", wavelength: 808, power: [0.001, 100], description: "A compact, efficient semiconductor laser diode. These are ubiquitous, from CD players to arrays used to pump other solid-state lasers (DPSS).", applications: "Pumping other lasers, CD players, laser printers.", color: 'rgba(107, 114, 128, 1)' },
+                    "GaN Diode": { type: "Semiconductor", wavelength: 405, power: [0.005, 5], description: "The technology behind Blu-ray and modern blue/violet laser pointers. Gallium Nitride diodes opened up the short-wavelength visible spectrum for compact lasers.", applications: "Blu-ray players, data storage, displays, lighting.", color: 'rgba(79, 70, 229, 1)' }
+                },
+                applications: {
+                    "Industrial": { icon: '🏭', title: "Industrial & Manufacturing", content: "Lasers are precision tools for cutting, welding, drilling, and marking materials. Fiber and CO₂ lasers dominate this field due to their high power and efficiency." },
+                    "Medical": { icon: '⚕️', title: "Medical & Biomedical", content: "In medicine, lasers act as 'light scalpels' for precise, minimally invasive surgery (e.g., LASIK), dermatology, and cancer therapy. Wavelengths are chosen to target specific tissues." },
+                    "Scientific": { icon: '🔬', title: "Scientific Research", content: "Lasers are indispensable for cooling atoms, studying chemical reactions on femtosecond timescales, high-precision spectroscopy, and detecting gravitational waves (LIGO)." },
+                    "Telecom": { icon: '📡', title: "Telecommunications", content: "Semiconductor lasers are the engine of the internet, transmitting data as light pulses through fiber optic cables. EDFAs boost these signals for long-distance communication." },
+                    "Data Storage": { icon: '💾', title: "Data Storage", content: "From the infrared laser in a CD player to the blue-violet laser in a Blu-ray player, lasers read and write data. Shorter wavelengths allow for increased storage density." },
+                    "Military": { icon: '🎯', title: "Military & Defense", content: "Applications include rangefinders for precise targeting, guiding munitions, and emerging high-power directed energy weapons. They also enable secure communication." }
+                },
+                safety: {
+                    "class1": { title: "Class 1: Safe", content: "Considered safe under all reasonably foreseeable conditions. The maximum permissible exposure (MPE) cannot be exceeded. Products like CD players are Class 1 because the laser is fully enclosed.", color: 'bg-green-100', textColor: 'text-green-800' },
+                    "class2": { title: "Class 2: Low Power Visible", content: "Applies to visible light lasers (1 mW max). They are safe for accidental, momentary viewing due to the blink reflex. Intentional staring into the beam is hazardous.", color: 'bg-yellow-100', textColor: 'text-yellow-800' },
+                    "class3b": { title: "Class 3B: Hazardous Direct Exposure", content: "Hazardous if the eye is exposed directly to the beam or a mirror-like reflection. Diffuse reflections are generally not harmful. Power is limited to 500 mW. Safety eyewear is required.", color: 'bg-orange-100', textColor: 'text-orange-800' },
+                    "class4": { title: "Class 4: Severe Hazard", content: "The highest class. Hazardous to the eye and skin from direct exposure and even diffuse reflections. They are a fire hazard. Strict control measures are mandatory.", color: 'bg-red-100', textColor: 'text-red-800' }
+                }
+            },
+
+            charts: {
+                wavelengthPower: null,
+                pulseDuration: null,
+                selectedLaserIndex: null // State to track the selected laser
+            },
+            
+            // Initialization function, called when the DOM is loaded
+            init() {
+                this.initMobileMenu();
+                this.initNavScroll();
+                this.initCharts();
+                this.initLaserExplorer();
+                this.initApplications();
+                this.initSafetyTabs();
+            },
+            
+            initMobileMenu() {
+                const menuButton = document.getElementById('mobile-menu-button');
+                const mobileMenu = document.getElementById('mobile-menu');
+                menuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            },
+
+            initNavScroll() {
+                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                    anchor.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const targetId = this.getAttribute('href');
+                        const targetElement = document.querySelector(targetId);
+                        if (targetElement) {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            // Close mobile menu on navigation
+                            document.getElementById('mobile-menu').classList.add('hidden');
+                        }
+                    });
+                });
+            },
+
+            initLaserExplorer() {
+                const list = document.getElementById('laser-list');
+                const details = document.getElementById('laser-details');
+                const filters = document.querySelectorAll('.laser-filter');
+
+                const populateList = (filter = 'all') => {
+                    list.innerHTML = ''; // Clear previous list
+                    this.charts.selectedLaserIndex = null; // Reset selection on filter change
+                    const laserEntries = Object.entries(this.data.lasers);
+                    const filteredLasers = laserEntries.filter(([name, data]) => filter === 'all' || data.type === filter);
+
+                    if (filteredLasers.length === 0) {
+                        details.innerHTML = `<h3 class="text-2xl font-bold text-gray-800">No Lasers Found</h3><p class="text-gray-600 mt-2">No lasers match the selected filter.</p>`;
+                        // Clear chart highlight if no lasers are found
+                        this.updateCharts(null);
+                        return;
+                    }
+
+                    filteredLasers.forEach(([name, data]) => {
+                        const li = document.createElement('li');
+                        li.className = 'p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200';
+                        li.textContent = name;
+                        li.dataset.laserName = name;
+                        li.addEventListener('click', () => {
+                            updateDetails(name);
+                            highlightListItem(li);
+                            this.updateCharts(name);
+                        });
+                        list.appendChild(li);
+                    });
+
+                    // Automatically select and display the first laser in the filtered list
+                    if (list.firstChild) {
+                       list.firstChild.click();
+                    }
+                }
+                
+                const updateDetails = (name) => {
+                    const data = this.data.lasers[name];
+                    details.innerHTML = `
+                        <h3 class="text-2xl font-bold" style="color:${data.color}">${name}</h3>
+                        <p class="text-sm font-semibold text-gray-500 mb-4">${data.type} Laser</p>
+                        <p class="text-gray-700 mb-4">${data.description}</p>
+                        <div>
+                            <p class="font-semibold">Wavelength: <span class="font-normal text-blue-600">${data.wavelength} nm</span></p>
+                            <p class="font-semibold">Typical CW Power: <span class="font-normal text-blue-600">${data.power[1] > 0 ? `${data.power[0]} W – ${data.power[1]} W` : 'Pulsed Operation'}</span></p>
+                            <p class="font-semibold mt-2">Primary Applications:</p>
+                            <p class="font-normal text-gray-600">${data.applications}</p>
+                        </div>
+                    `;
+                }
+
+                const highlightListItem = (activeLi) => {
+                    list.querySelectorAll('li').forEach(li => li.classList.remove('bg-blue-100', 'font-semibold'));
+                    activeLi.classList.add('bg-blue-100', 'font-semibold');
+                }
+
+                filters.forEach(button => {
+                    button.addEventListener('click', () => {
+                        filters.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        populateList(button.dataset.filter);
+                    });
+                });
+
+                // Initial population
+                document.querySelector('.laser-filter[data-filter="all"]').classList.add('active');
+                populateList('all');
+            },
+
+            initCharts() {
+                // Wavelength vs Power Chart
+                const wpCtx = document.getElementById('wavelengthPowerChart').getContext('2d');
+                const chartData = Object.entries(this.data.lasers).map(([name, data]) => ({
+                    x: data.wavelength,
+                    y: data.power[1] > 0 ? data.power[1] : 0.0001, // Use max power, plot pulsed at bottom
+                    label: name,
+                    color: data.color,
+                    isPulsed: data.power[1] === 0
+                }));
+
+                this.charts.wavelengthPower = new Chart(wpCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Laser Types',
+                            data: chartData,
+                            pointBackgroundColor: chartData.map(d => d.color),
+                            pointRadius: 8,
+                            pointHoverRadius: 12,
+                            pointBorderWidth: 2,
+                            pointBorderColor: 'transparent',
+                            pointHoverBorderColor: 'black'
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                title: { display: true, text: 'Wavelength (nm)', font: { size: 14 } },
+                                min: 100,
+                                max: 20000,
+                                ticks: {
+                                    callback: function(value, index, ticks) {
+                                        const log10 = Math.log10(value);
+                                        if (log10 === Math.floor(log10)) return value.toLocaleString();
+                                        const powerOf10 = Math.pow(10, Math.floor(log10));
+                                        const firstDigit = value / powerOf10;
+                                        if (Math.abs(firstDigit - 2) < 0.01 || Math.abs(firstDigit - 5) < 0.01) return value.toLocaleString();
+                                        return null; 
+                                    }
+                                }
+                            },
+                            y: {
+                                type: 'logarithmic',
+                                title: { display: true, text: 'Max Continuous Power (W)', font: { size: 14 } },
+                                min: 0.00001,
+                                max: 1000000,
+                                ticks: {
+                                    callback: function(value, index, ticks) {
+                                        const log10 = Math.log10(value);
+                                        if (Math.abs(log10 - Math.round(log10)) < 1e-6) return value;
+                                        return null;
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const d = context.raw;
+                                        return `${d.label}: ${d.x} nm, ${d.isPulsed ? 'Pulsed' : d.y + ' W'}`;
+                                    }
+                                }
+                            },
+                            legend: { display: false }
+                        }
+                    }
+                });
+                
+                // Pulse Duration Chart
+                const pdCtx = document.getElementById('pulseDurationChart').getContext('2d');
+                const pulseData = {
+                    labels: ['CW', 'Q-Switched (ns)', 'Mode-Locked (ps)', 'Mode-Locked (fs)'],
+                    durations: [1, 1e-8, 1e-11, 1e-14] // seconds
+                };
+
+                this.charts.pulseDuration = new Chart(pdCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: pulseData.labels,
+                        datasets: [{
+                            label: 'Pulse Duration (s)',
+                            data: pulseData.durations,
+                            backgroundColor: ['#64748b', '#f97316', '#3b82f6', '#8b5cf6'],
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                title: { display: true, text: 'Effective Pulse Duration (seconds)' },
+                                min: 1e-15,
+                                max: 10,
+                                ticks: {
+                                    callback: function(value, index, ticks) {
+                                        return value.toExponential(0);
+                                    }
+                                }
+                            },
+                            y: { title: { display: true, text: 'Operational Mode' } }
+                        },
+                        plugins: {
+                             tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        let value = context.raw;
+                                        if (context.label === 'CW') return 'Continuous Wave (no pulse)';
+                                        return `~${value.toExponential(0)} seconds`;
+                                    }
+                                }
+                            },
+                            legend: { display: false }
+                        }
+                    }
+                });
+            },
+            
+            updateCharts(laserName) {
+                const chart = this.charts.wavelengthPower;
+                const dataset = chart.data.datasets[0];
+                const elements = chart.getDatasetMeta(0).data;
+
+                // Reset the previously selected point
+                if (this.charts.selectedLaserIndex !== null && elements[this.charts.selectedLaserIndex]) {
+                    const prevElement = elements[this.charts.selectedLaserIndex];
+                    prevElement.options.radius = 8;
+                    prevElement.options.borderColor = 'transparent';
+                }
+
+                if (laserName === null) {
+                    this.charts.selectedLaserIndex = null;
+                    chart.update();
+                    return;
+                }
+
+                // Find and highlight the new point
+                const dataPointIndex = dataset.data.findIndex(p => p.label === laserName);
+                if (dataPointIndex !== -1) {
+                    const newElement = elements[dataPointIndex];
+                    newElement.options.radius = 14;
+                    newElement.options.borderColor = 'black';
+                    this.charts.selectedLaserIndex = dataPointIndex;
+                } else {
+                    this.charts.selectedLaserIndex = null;
+                }
+                
+                chart.update();
+            },
+
+            initApplications() {
+                const grid = document.getElementById('app-grid');
+                Object.values(this.data.applications).forEach(app => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-6 cursor-pointer';
+                    card.innerHTML = `
+                        <div class="flex items-center mb-4">
+                            <span class="text-4xl mr-4">${app.icon}</span>
+                            <h4 class="text-xl font-semibold">${app.title}</h4>
+                        </div>
+                        <p class="text-gray-600 app-content hidden">${app.content}</p>
+                    `;
+                    card.addEventListener('click', () => {
+                        card.querySelector('.app-content').classList.toggle('hidden');
+                        card.classList.toggle('bg-blue-50');
+                    });
+                    grid.appendChild(card);
+                });
+            },
+
+            initSafetyTabs() {
+                const tabs = document.querySelectorAll('.safety-tab');
+                const content = document.getElementById('safety-content');
+
+                const updateContent = (targetId) => {
+                    const data = this.data.safety[targetId];
+                    content.innerHTML = `
+                        <div class="card p-6 rounded-lg transition-all duration-300 ${data.color}">
+                            <h4 class="text-2xl font-bold ${data.textColor}">${data.title}</h4>
+                            <p class="mt-2 text-lg ${data.textColor}">${data.content}</p>
+                        </div>
+                    `;
+                     tabs.forEach(t => {
+                        const isSelected = t.dataset.target === targetId;
+                        t.classList.toggle('border-blue-600', isSelected);
+                        t.classList.toggle('text-blue-600', isSelected);
+                        t.classList.toggle('border-transparent', !isSelected);
+                        t.classList.toggle('text-gray-500', !isSelected);
+                    });
+                }
+
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => updateContent(tab.dataset.target));
+                });
+
+                // Initial state
+                updateContent('class1');
+            }
+        };
+
+        // Start the application once the DOM is ready
+        document.addEventListener('DOMContentLoaded', () => laserApp.init());
+
+    </script>
+</body>
+</html>

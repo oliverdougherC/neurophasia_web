@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iSCSI - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Tech Neutral -->
+    <!-- Application Structure Plan: A single-page application with a fixed sidebar navigation for thematic exploration. The structure is designed for non-linear access to information, allowing users (e.g., engineers, architects, managers) to jump directly to their area of interest. The sections are: 1) Overview: High-level introduction. 2) Core Architecture: Interactive diagrams for components and protocol layering. 3) Performance Deep Dive: An interactive chart and cards explaining performance factors and tuning. 4) Protocol Showdown: A dynamic comparison tool for iSCSI vs. FC and FCoE. 5) Deployment Guide: Task-oriented guide for security, discovery, and high availability (MPIO). 6) Use Cases: A visual grid of common applications. This structure prioritizes usability by grouping complex information into digestible, interactive modules rather than following the linear flow of the source report. -->
+    <!-- Visualization & Content Choices: 1) Goal: Explain protocol layering -> Viz: Interactive diagram of stacked divs (HTML/CSS/JS) to show encapsulation, avoiding static images. Interaction: Click to reveal details for each layer. 2) Goal: Compare performance trade-offs -> Viz: Chart.js Radar Chart. Interaction: Buttons to dynamically update chart data, showing profiles for Software vs. Hardware Offload. Justification: Visually demonstrates the strengths/weaknesses of each approach. 3) Goal: Compare iSCSI to alternatives -> Viz: Side-by-side comparison tables. Interaction: JS-powered tabs to switch between FC and FCoE comparisons. Justification: Direct comparison is easier than scrolling. 4) Goal: Explain high availability -> Viz: Diagram of a multipathed setup using styled HTML/CSS divs. Justification: Simplifies a complex network topology. Library: Chart.js is used for its simplicity and canvas rendering. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+            padding-top: 1.25rem;
+            padding-bottom: 1.25rem;
+        }
+        .nav-link:hover,
+        .nav-link.active {
+            color: #2563eb; /* blue-600 */
+            border-bottom-color: #2563eb; /* blue-600 */
+        }
+        .mobile-nav-link {
+             transition: all 0.2s ease-in-out;
+        }
+        .mobile-nav-link.active {
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .tab-button {
+            transition: all 0.2s ease;
+        }
+        .tab-button.active {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .encapsulation-layer {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .encapsulation-layer:hover {
+             background-color: #e0f2fe; /* sky-100 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <a href="https://neurophasia.com" target="_blank" class="text-2xl font-bold text-slate-800 hover:text-blue-600 transition-colors">Neurophasia</a>
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#overview" class="nav-link text-sm font-medium text-slate-600">Overview</a>
+                    <a href="#architecture" class="nav-link text-sm font-medium text-slate-600">Architecture</a>
+                    <a href="#performance" class="nav-link text-sm font-medium text-slate-600">Performance</a>
+                    <a href="#comparison" class="nav-link text-sm font-medium text-slate-600">Comparison</a>
+                    <a href="#deployment" class="nav-link text-sm font-medium text-slate-600">Deployment</a>
+                    <a href="#usecases" class="nav-link text-sm font-medium text-slate-600">Use Cases</a>
+                </nav>
+                <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-slate-600 hover:bg-slate-100">
+                     <span class="text-2xl">&#9776;</span>
+                </button>
+            </div>
+            <nav id="mobile-menu" class="hidden md:hidden pb-4">
+                <a href="#overview" class="mobile-nav-link nav-link block py-2 px-3 rounded-md text-base font-medium">Overview</a>
+                <a href="#architecture" class="mobile-nav-link nav-link block py-2 px-3 rounded-md text-base font-medium">Architecture</a>
+                <a href="#performance" class="mobile-nav-link nav-link block py-2 px-3 rounded-md text-base font-medium">Performance</a>
+                <a href="#comparison" class="mobile-nav-link nav-link block py-2 px-3 rounded-md text-base font-medium">Comparison</a>
+                <a href="#deployment" class="mobile-nav-link nav-link block py-2 px-3 rounded-md text-base font-medium">Deployment</a>
+                <a href="#usecases" class="mobile-nav-link nav-link block py-2 px-3 rounded-md text-base font-medium">Use Cases</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div>
+            <div id="content-container">
+                <!-- Overview Section -->
+                <section id="overview" class="content-section active">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-4">What is iSCSI?</h2>
+                    <p class="text-lg text-slate-600 mb-6">This section provides a foundational understanding of the iSCSI protocol. It explains its core purpose as a mechanism for transporting block-level storage data over standard IP networks, effectively making remote storage appear local to application servers. We'll touch on its role in building cost-effective Storage Area Networks (SANs) and introduce its governing standard, RFC 7143.</p>
+                    
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="card p-6">
+                            <h3 class="font-bold text-lg mb-2 text-blue-600">Block Storage over IP</h3>
+                            <p class="text-slate-600">iSCSI (Internet Small Computer System Interface) encapsulates standard SCSI commands into TCP/IP packets. This allows servers to access consolidated storage arrays over a standard Ethernet network as if they were directly attached disk drives.</p>
+                        </div>
+                        <div class="card p-6">
+                            <h3 class="font-bold text-lg mb-2 text-blue-600">Cost-Effective SANs</h3>
+                            <p class="text-slate-600">A primary driver for iSCSI is its ability to leverage existing, commodity Ethernet hardware and networking expertise. This provides a lower-cost alternative to dedicated Fibre Channel (FC) SANs, which require specialized adapters, switches, and skills.</p>
+                        </div>
+                        <div class="card p-6">
+                            <h3 class="font-bold text-lg mb-2 text-blue-600">The Standard: RFC 7143</h3>
+                            <p class="text-slate-600">The definitive iSCSI protocol is specified in IETF's RFC 7143. This document consolidates and supersedes earlier standards, providing a single, authoritative reference for ensuring interoperability between different vendor implementations.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Architecture Section -->
+                <section id="architecture" class="content-section">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-4">Core Architecture</h2>
+                    <p class="text-lg text-slate-600 mb-6">This section breaks down the fundamental building blocks of the iSCSI protocol. We will explore the client-server relationship between Initiators and Targets, visualize the multi-layered encapsulation process that makes iSCSI possible, and explain the critical system for naming and addressing nodes to ensure stable connections in dynamic network environments.</p>
+
+                    <div class="card p-6 mb-8">
+                        <h3 class="font-bold text-xl mb-4 text-slate-700">Components: Initiator & Target</h3>
+                         <div class="grid md:grid-cols-2 gap-6">
+                             <div>
+                                <h4 class="font-semibold text-lg mb-2">➜ iSCSI Initiator (The Client)</h4>
+                                <p class="text-slate-600">Resides on the host server that needs storage. It initiates requests by sending SCSI commands to a target. It can be a software driver using a standard NIC or a dedicated hardware adapter (iSCSI HBA) that offloads processing from the host CPU.</p>
+                             </div>
+                              <div>
+                                <h4 class="font-semibold text-lg mb-2">➜ iSCSI Target (The Server)</h4>
+                                <p class="text-slate-600">Resides on the storage array or server that provides storage. It listens for commands from initiators, executes them, and returns data and status. It presents storage as numbered block devices called Logical Units (LUNs).</p>
+                             </div>
+                         </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <h3 class="font-bold text-xl mb-4 text-slate-700">Interactive: The Encapsulation Process</h3>
+                        <p class="text-slate-600 mb-4">Click on each layer to see its role. iSCSI works by wrapping SCSI commands in multiple network layers for transport across an IP network.</p>
+                        <div id="encapsulation-diagram" class="space-y-2">
+                             <div data-desc="The original storage command (e.g., Read, Write) generated by the server's operating system." class="encapsulation-layer border-2 border-slate-300 p-4 rounded-lg text-center font-semibold text-slate-700">
+                                SCSI Command (CDB)
+                                <div class="w-full mt-4 p-4 rounded-lg bg-slate-100 text-sm text-slate-800 text-left font-normal hidden"><span class="font-bold">Layer:</span> SCSI<br><span class="font-bold">Description:</span> The original storage command (e.g., Read, Write) generated by the server's operating system.</div>
+                            </div>
+                            <div class="text-center text-slate-500 font-bold">↓ is wrapped in ↓</div>
+                            <div data-desc="The iSCSI Protocol Data Unit (PDU) adds an iSCSI header for session management, command sequencing, and control." class="encapsulation-layer border-2 border-blue-400 bg-blue-50 p-4 rounded-lg text-center font-semibold text-blue-800">
+                                iSCSI PDU
+                                <div class="w-full mt-4 p-4 rounded-lg bg-blue-100 text-sm text-blue-900 text-left font-normal hidden"><span class="font-bold">Layer:</span> iSCSI<br><span class="font-bold">Description:</span> The iSCSI Protocol Data Unit (PDU) adds an iSCSI header for session management, command sequencing, and control.</div>
+                            </div>
+                             <div class="text-center text-slate-500 font-bold">↓ is wrapped in ↓</div>
+                             <div data-desc="The TCP header provides reliable, in-order, connection-oriented delivery. It handles packet loss and reassembly, which is critical for storage." class="encapsulation-layer border-2 border-green-400 bg-green-50 p-4 rounded-lg text-center font-semibold text-green-800">
+                                TCP Segment
+                                <div class="w-full mt-4 p-4 rounded-lg bg-green-100 text-sm text-green-900 text-left font-normal hidden"><span class="font-bold">Layer:</span> Transport (TCP)<br><span class="font-bold">Description:</span> The TCP header provides reliable, in-order, connection-oriented delivery. It handles packet loss and reassembly, which is critical for storage.</div>
+                            </div>
+                             <div class="text-center text-slate-500 font-bold">↓ is wrapped in ↓</div>
+                             <div data-desc="The IP header adds source and destination IP addresses, making the packet routable across local and wide area networks." class="encapsulation-layer border-2 border-yellow-400 bg-yellow-50 p-4 rounded-lg text-center font-semibold text-yellow-800">
+                                IP Datagram
+                                <div class="w-full mt-4 p-4 rounded-lg bg-yellow-100 text-sm text-yellow-900 text-left font-normal hidden"><span class="font-bold">Layer:</span> Network (IP)<br><span class="font-bold">Description:</span> The IP header adds source and destination IP addresses, making the packet routable across local and wide area networks.</div>
+                            </div>
+                            <div class="text-center text-slate-500 font-bold">↓ is wrapped in ↓</div>
+                             <div data-desc="The Ethernet frame adds source and destination MAC addresses for delivery on the local network segment." class="encapsulation-layer border-2 border-purple-400 bg-purple-50 p-4 rounded-lg text-center font-semibold text-purple-800">
+                                Ethernet Frame
+                                <div class="w-full mt-4 p-4 rounded-lg bg-purple-100 text-sm text-purple-900 text-left font-normal hidden"><span class="font-bold">Layer:</span> Data Link (Ethernet)<br><span class="font-bold">Description:</span> The Ethernet frame adds source and destination MAC addresses for delivery on the local network segment.</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Performance Section -->
+                <section id="performance" class="content-section">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-4">Performance Deep Dive</h2>
+                    <p class="text-lg text-slate-600 mb-6">iSCSI performance is not just about network speed; it's a balance of multiple factors. This section provides an interactive visualization of the trade-offs between different iSCSI initiator types. Explore how factors like CPU overhead and network stability impact performance, and learn about key tuning techniques like Jumbo Frames and hardware offload that are critical for demanding workloads.</p>
+                    
+                    <div class="card p-6">
+                        <h3 class="font-bold text-xl mb-2 text-slate-700">Initiator Performance Profiles</h3>
+                        <p class="text-slate-600 mb-4">Select an initiator type to see its typical performance characteristics. A higher value is better.</p>
+                         <div class="flex flex-wrap gap-2 mb-6">
+                            <button class="perf-button tab-button px-4 py-2 rounded-md bg-slate-200 text-slate-800 active" data-perf="software">Software Initiator</button>
+                            <button class="perf-button tab-button px-4 py-2 rounded-md bg-slate-200 text-slate-800" data-perf="toe">TOE NIC</button>
+                            <button class="perf-button tab-button px-4 py-2 rounded-md bg-slate-200 text-slate-800" data-perf="hba">iSCSI HBA</button>
+                             <button class="perf-button tab-button px-4 py-2 rounded-md bg-slate-200 text-slate-800" data-perf="iser">iSER (RDMA)</button>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="perfChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6 mt-8">
+                        <div class="card p-6">
+                            <h3 class="font-bold text-lg mb-2 text-blue-600">Jumbo Frames (MTU 9000)</h3>
+                            <p class="text-slate-600">A key tuning technique. By increasing the packet size from 1500 to 9000 bytes, you reduce the per-packet processing overhead. This lowers CPU utilization and can increase throughput, but must be configured end-to-end on all devices in the path (NICs, switches, targets).</p>
+                        </div>
+                        <div class="card p-6">
+                            <h3 class="font-bold text-lg mb-2 text-blue-600">Hardware Offload</h3>
+                            <p class="text-slate-600">Essential for high performance. TCP Offload Engines (TOE) move TCP/IP processing to the NIC. Full iSCSI HBAs offload both TCP/IP and iSCSI processing, resulting in the lowest latency and minimal host CPU impact, making iSCSI competitive with Fibre Channel.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Comparison Section -->
+                <section id="comparison" class="content-section">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-4">Protocol Showdown</h2>
+                    <p class="text-lg text-slate-600 mb-6">How does iSCSI stack up against its main alternatives? This section provides a direct, side-by-side comparison with traditional Fibre Channel (FC) and its converged cousin, Fibre Channel over Ethernet (FCoE). Use the tabs to switch between comparisons and understand the key differences in transport, performance, cost, and infrastructure requirements to make an informed decision.</p>
+
+                    <div class="card p-6">
+                         <div class="flex flex-wrap gap-2 mb-6">
+                            <button class="comp-button tab-button px-4 py-2 rounded-md bg-slate-200 text-slate-800 active" data-comp="fc">vs. Fibre Channel (FC)</button>
+                            <button class="comp-button tab-button px-4 py-2 rounded-md bg-slate-200 text-slate-800" data-comp="fcoe">vs. FCoE</button>
+                        </div>
+                        
+                        <div id="fc-comparison" class="comparison-content active">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th class="p-4 font-semibold text-slate-800">Feature</th>
+                                            <th class="p-4 font-semibold text-slate-800">iSCSI</th>
+                                            <th class="p-4 font-semibold text-slate-800">Fibre Channel (FC)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200">
+                                        <tr><td class="p-4 font-medium">Transport</td><td class="p-4">TCP/IP over standard Ethernet</td><td class="p-4">Dedicated FCP protocol over a lossless fabric</td></tr>
+                                        <tr><td class="p-4 font-medium">Performance</td><td class="p-4">Higher latency, sensitive to network congestion</td><td class="p-4">Lower latency, predictable high performance</td></tr>
+                                        <tr><td class="p-4 font-medium">Cost</td><td class="p-4">Lower initial cost using commodity hardware</td><td class="p-4">Higher cost due to specialized HBAs & switches</td></tr>
+                                        <tr><td class="p-4 font-medium">Complexity</td><td class="p-4">Leverages existing IP skills; MPIO can be complex</td><td class="p-4"><strong>Requires</strong> specialized skills (WWNs, Zoning)</td></tr>
+                                        <tr><td class="p-4 font-medium">Infrastructure</td><td class="p-4">Runs on converged Ethernet networks</td><td class="p-4"><strong>Requires</strong> a separate, dedicated SAN fabric</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div id="fcoe-comparison" class="comparison-content hidden">
+                             <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th class="p-4 font-semibold text-slate-800">Feature</th>
+                                            <th class="p-4 font-semibold text-slate-800">iSCSI</th>
+                                            <th class="p-4 font-semibold text-slate-800">Fibre Channel over Ethernet (FCoE)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-200">
+                                        <tr><td class="p-4 font-medium">Encapsulation</td><td class="p-4">SCSI within TCP/IP</td><td class="p-4">FC frames directly within Ethernet frames</td></tr>
+                                        <tr><td class="p-4 font-medium">Infrastructure</td><td class="p-4">Standard Ethernet (DCB optional)</td><td class="p-4"><strong>Requires</strong> lossless Ethernet (DCB mandatory)</td></tr>
+                                        <tr><td class="p-4 font-medium">Hardware</td><td class="p-4">Standard NICs, TOE NICs, or iSCSI HBAs</td><td class="p-4">Converged Network Adapters (CNAs)</td></tr>
+                                        <tr><td class="p-4 font-medium">Performance Goal</td><td class="p-4">Good performance over flexible IP</td><td class="p-4">Aims for native FC performance over Ethernet</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Deployment Guide Section -->
+                <section id="deployment" class="content-section">
+                     <h2 class="text-3xl font-bold text-slate-800 mb-4">Deployment Guide</h2>
+                     <p class="text-lg text-slate-600 mb-6">Proper deployment is key to a stable and performant iSCSI SAN. This section provides a high-level guide to three critical areas: securing your storage traffic, discovering targets on the network, and implementing high availability through multipathing (MPIO). These best practices are essential for any production environment.</p>
+                     
+                     <div class="space-y-8">
+                        <div class="card p-6">
+                            <h3 class="font-bold text-xl mb-4 text-slate-700">1. Security: A Layered Approach</h3>
+                            <div class="grid md:grid-cols-3 gap-4">
+                                <div><span class="font-semibold text-blue-600">Authentication (CHAP):</span> Use Challenge-Handshake Authentication Protocol to verify initiator identity. The secret key is never sent over the wire.</div>
+                                <div><span class="font-semibold text-blue-600">Isolation (VLANs):</span> The most effective step. Isolate iSCSI traffic on a dedicated network or VLAN to prevent unauthorized access and interference from other traffic.</div>
+                                <div><span class="font-semibold text-blue-600">Encryption (IPsec):</span> For maximum security over untrusted networks, use IPsec to encrypt the entire data stream. Be aware of the potential performance overhead.</div>
+                            </div>
+                        </div>
+
+                        <div class="card p-6">
+                            <h3 class="font-bold text-xl mb-4 text-slate-700">2. Discovery: Finding Your Storage</h3>
+                             <div class="grid md:grid-cols-3 gap-4">
+                                <div><span class="font-semibold">Static:</span> Manually configure target IP addresses on each initiator. Simple, but doesn't scale.</div>
+                                <div><span class="font-semibold">SendTargets:</span> The initiator queries a single target portal, which returns a list of all available targets. A common, dynamic method.</div>
+                                <div><span class="font-semibold">iSNS:</span> A centralized server (Internet Storage Name Service) that acts like DNS for iSCSI, managing discovery for large environments.</div>
+                            </div>
+                        </div>
+
+                         <div class="card p-6">
+                            <h3 class="font-bold text-xl mb-4 text-slate-700">3. High Availability: Multipathing (MPIO)</h3>
+                            <p class="text-slate-600 mb-4">MPIO is non-negotiable for production. It provides fault tolerance and load balancing by creating multiple, redundant network paths from the initiator to the target. It is vastly superior to simple link aggregation (LAG/LACP) for storage traffic.</p>
+                            <div class="bg-slate-50 p-4 rounded-lg flex flex-col items-center">
+                                <div class="font-semibold mb-2">Simplified MPIO Topology</div>
+                                <div class="flex justify-around w-full max-w-lg mb-2">
+                                    <div class="text-center"><div class="p-2 border-2 border-slate-400 rounded bg-white">Server NIC 1</div></div>
+                                    <div class="text-center"><div class="p-2 border-2 border-slate-400 rounded bg-white">Server NIC 2</div></div>
+                                </div>
+                                <div class="flex justify-around w-full max-w-lg mb-2">
+                                    <div class="text-xs text-slate-500">↓</div><div class="text-xs text-slate-500">↓</div><div class="text-xs text-slate-500">↓</div><div class="text-xs text-slate-500">↓</div>
+                                </div>
+                                <div class="flex justify-around w-full max-w-2xl mb-2">
+                                    <div class="text-center flex-1 mx-2"><div class="p-2 border-2 border-blue-400 rounded bg-white">Switch A</div></div>
+                                    <div class="text-center flex-1 mx-2"><div class="p-2 border-2 border-blue-400 rounded bg-white">Switch B</div></div>
+                                </div>
+                                <div class="flex justify-around w-full max-w-lg mb-2">
+                                     <div class="text-xs text-slate-500">↓</div><div class="text-xs text-slate-500">↓</div><div class="text-xs text-slate-500">↓</div><div class="text-xs text-slate-500">↓</div>
+                                </div>
+                                <div class="flex justify-around w-full max-w-lg">
+                                    <div class="text-center"><div class="p-2 border-2 border-green-500 rounded bg-white">Storage Port A</div></div>
+                                    <div class="text-center"><div class="p-2 border-2 border-green-500 rounded bg-white">Storage Port B</div></div>
+                                </div>
+                                <p class="text-xs text-slate-600 mt-4">This redundant setup ensures that failure of a NIC, switch, or storage port does not cause an outage.</p>
+                            </div>
+                        </div>
+                     </div>
+                </section>
+                
+                <!-- Use Cases Section -->
+                <section id="usecases" class="content-section">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-4">Common Use Cases</h2>
+                    <p class="text-lg text-slate-600 mb-6">Thanks to its foundation on ubiquitous IP networking, iSCSI is a versatile protocol applied in many scenarios. From cost-sensitive small businesses to large enterprises and cloud providers, iSCSI provides the essential block storage needed for critical applications. Explore some of the most common use cases below.</p>
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="card p-6 text-center">
+                            <div class="text-4xl mb-3">🗄️</div>
+                            <h3 class="font-bold text-lg mb-2">Virtualization Platforms</h3>
+                            <p class="text-slate-600">The most popular use case. iSCSI provides the shared storage necessary for hypervisor features like VMware vMotion, HA, and DRS, enabling flexible and resilient virtual machine management.</p>
+                        </div>
+                        <div class="card p-6 text-center">
+                            <div class="text-4xl mb-3">💽</div>
+                            <h3 class="font-bold text-lg mb-2">Database Storage</h3>
+                            <p class="text-slate-600">Databases like SQL Server and Oracle often require direct block-level access for their data and log files. iSCSI provides this access over the network, though careful performance tuning is critical.</p>
+                        </div>
+                        <div class="card p-6 text-center">
+                             <div class="text-4xl mb-3">🔄</div>
+                            <h3 class="font-bold text-lg mb-2">Backup & Disaster Recovery</h3>
+                            <p class="text-slate-600">iSCSI LUNs are ideal disk-based targets for backup software. Its ability to work over WANs also makes it perfect for replicating data to a remote DR site for business continuity.</p>
+                        </div>
+                         <div class="card p-6 text-center">
+                             <div class="text-4xl mb-3">🏢</div>
+                            <h3 class="font-bold text-lg mb-2">SMB & Mid-Market SANs</h3>
+                            <p class="text-slate-600">iSCSI allows smaller organizations to build their first SAN, centralizing storage and improving efficiency without the high cost and complexity of traditional Fibre Channel.</p>
+                        </div>
+                         <div class="card p-6 text-center">
+                             <div class="text-4xl mb-3">☁️</div>
+                            <h3 class="font-bold text-lg mb-2">Cloud Storage Integration</h3>
+                            <p class="text-slate-600">Major cloud providers offer block storage services accessible via iSCSI. This enables persistent storage for cloud-native applications and simplifies hybrid cloud data mobility.</p>
+                        </div>
+                         <div class="card p-6 text-center">
+                             <div class="text-4xl mb-3">🧪</div>
+                            <h3 class="font-bold text-lg mb-2">Test & Development</h3>
+                            <p class="text-slate-600">Quickly and easily provision storage for dev/test environments without needing to physically cable new drives or consume expensive Tier-1 FC storage resources.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+        <footer class="text-center p-6 mt-10 text-sm text-slate-500">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p>Part of the Neurophasia Archive</p>
+        </footer>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('.content-section');
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            const setActiveLink = (hash) => {
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === hash);
+                });
+            };
+
+            const showSection = (hash) => {
+                sections.forEach(section => {
+                    if ('#' + section.id === hash) {
+                        section.classList.add('active');
+                    } else {
+                        section.classList.remove('active');
+                    }
+                });
+            };
+
+            const handleNavigation = (e) => {
+                e.preventDefault();
+                const hash = e.currentTarget.getAttribute('href');
+                window.location.hash = hash;
+                setActiveLink(hash);
+                showSection(hash);
+                if (mobileMenu.classList.contains('block')) {
+                   mobileMenu.classList.remove('block');
+                   mobileMenu.classList.add('hidden');
+                }
+            };
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', handleNavigation);
+            });
+            
+            mobileMenuButton.addEventListener('click', () => {
+                const isHidden = mobileMenu.classList.contains('hidden');
+                mobileMenu.classList.toggle('hidden', !isHidden);
+                mobileMenu.classList.toggle('block', isHidden);
+            });
+
+            const initialHash = window.location.hash || '#overview';
+            setActiveLink(initialHash);
+            showSection(initialHash);
+            
+            const encapsulationLayers = document.querySelectorAll('.encapsulation-layer');
+            encapsulationLayers.forEach(layer => {
+                layer.addEventListener('click', () => {
+                    const descBox = layer.querySelector('div');
+                    const isHidden = descBox.classList.contains('hidden');
+                    
+                    document.querySelectorAll('.encapsulation-layer div').forEach(box => box.classList.add('hidden'));
+
+                    if (isHidden) {
+                        descBox.classList.remove('hidden');
+                    }
+                });
+            });
+
+            const compButtons = document.querySelectorAll('.comp-button');
+            const compContents = document.querySelectorAll('.comparison-content');
+            compButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    compButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const targetId = button.dataset.comp + '-comparison';
+                    compContents.forEach(content => {
+                        if(content.id === targetId) {
+                            content.classList.remove('hidden');
+                            content.classList.add('active');
+                        } else {
+                            content.classList.add('hidden');
+                            content.classList.remove('active');
+                        }
+                    });
+                });
+            });
+
+            const perfData = {
+                software: { label: 'Software Initiator (via CPU)', data: [6, 2, 7, 5, 8] },
+                toe: { label: 'TOE NIC (TCP Offload)', data: [7, 5, 7, 6, 8] },
+                hba: { label: 'iSCSI HBA (Full Offload)', data: [9, 8, 8, 8, 8] },
+                iser: { label: 'iSER (RDMA)', data: [10, 10, 9, 10, 8] }
+            };
+
+            const perfCtx = document.getElementById('perfChart').getContext('2d');
+            const perfChart = new Chart(perfCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Throughput', 'Low Host CPU Load', 'Predictability (QoS)', 'Low Latency (IOPS)', 'Cost-Effectiveness'],
+                    datasets: [{
+                        label: perfData.software.label,
+                        data: perfData.software.data,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: { font: { size: 12, weight: '500' }, color: '#334155' },
+                            min: 0,
+                            max: 10,
+                            ticks: {
+                                backdropColor: 'transparent',
+                                color: '#64748b',
+                                stepSize: 2
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#334155',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const perfButtons = document.querySelectorAll('.perf-button');
+            perfButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    perfButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const profile = button.dataset.perf;
+                    perfChart.data.datasets[0].data = perfData[profile].data;
+                    perfChart.data.datasets[0].label = perfData[profile].label;
+                    perfChart.update();
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>

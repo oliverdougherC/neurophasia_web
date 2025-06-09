@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HDR - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: The application is structured as a narrative journey for a video engineer. It starts with the fundamentals (HDR vs SDR, Human Visual System), moves to core technologies (Transfer Functions, Color Gamuts), then explores the practical ecosystem (Formats, Displays), and finally covers the end-to-end workflow (Production, Distribution). This thematic, layered approach is chosen over mirroring the report's structure to build knowledge progressively, making the complex topics more digestible. Key interactions include toggles for direct comparison (SDR/HDR), interactive charts for quantitative data, and tabbed interfaces for comparing multiple standards, which enhances usability and engagement. -->
+    <!-- Visualization & Content Choices: 1. Dynamic Range: Bar chart to compare SDR vs HDR stops (Goal: Compare, Method: Chart.js, Interaction: Static viz). 2. Bit Depth: Bar chart (Goal: Compare, Method: Chart.js). 3. Color Gamut: Nested donut chart showing Rec.709 within Rec.2020 (Goal: Compare, Method: Chart.js). 4. Transfer Functions: Interactive line chart comparing PQ and HLG curves (Goal: Compare, Method: Chart.js, Interaction: Hover for details). 5. HDR Formats: Tabbed HTML table for side-by-side comparison (Goal: Compare/Organize, Method: HTML/JS, Interaction: Click tabs). 6. Display Tech: Tabbed HTML table (Goal: Compare/Organize, Method: HTML/JS, Interaction: Click tabs). All choices use Canvas via Chart.js or structured HTML to avoid SVG/Mermaid, and are designed to make abstract data tangible and easy to compare. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #4A4A4A;
+        }
+        .nav-link {
+            transition: color 0.3s ease, border-bottom-color 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #D35400;
+            border-bottom-color: #D35400;
+        }
+        .section-card {
+            background-color: #FFFFFF;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid #F0EAE4;
+        }
+        .tab-button {
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border-radius: 0.5rem;
+        }
+        .tab-button.active {
+            background-color: #D35400;
+            color: #FFFFFF;
+        }
+        .tab-button:not(.active) {
+             background-color: #F0EAE4;
+             color: #4A4A4A;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm border-b border-gray-200">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <a href="https://neurophasia.com" class="text-2xl font-bold text-gray-800">Neurophasia</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#introduction" class="nav-link px-3 py-2 text-sm font-medium text-gray-700">Introduction</a>
+                        <a href="#hvs" class="nav-link px-3 py-2 text-sm font-medium text-gray-700">Human Vision</a>
+                        <a href="#tech" class="nav-link px-3 py-2 text-sm font-medium text-gray-700">Core Tech</a>
+                        <a href="#formats" class="nav-link px-3 py-2 text-sm font-medium text-gray-700">Formats & Displays</a>
+                        <a href="#workflow" class="nav-link px-3 py-2 text-sm font-medium text-gray-700">Workflow</a>
+                        <a href="#scam" class="nav-link px-3 py-2 text-sm font-medium text-gray-700">Is HDR a "Scam"?</a>
+                    </div>
+                </div>
+                 <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block w-full p-2.5">
+                        <option value="#introduction">Introduction</option>
+                        <option value="#hvs">Human Vision</option>
+                        <option value="#tech">Core Tech</option>
+                        <option value="#formats">Formats & Displays</option>
+                        <option value="#workflow">Workflow</option>
+                        <option value="#scam">Is HDR a "Scam"?</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <section id="introduction" class="section-card text-center">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">The Leap from SDR to HDR</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8">This abstract takes a look into High Dynamic Range (HDR) video. We'll dissect the core concepts that enable HDR to deliver a more realistic and immersive viewing experience by expanding luminance and color far beyond the limits of Standard Dynamic Range (SDR). Use the interactive charts and comparisons below to understand the quantifiable benefits of this technology.</p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-xl font-semibold mb-2">Dynamic Range (Stops of Light)</h3>
+                    <p class="text-sm text-gray-500 mb-4">HDR captures significantly more detail in the brightest and darkest areas of an image.</p>
+                    <div class="chart-container">
+                        <canvas id="dynamicRangeChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-2">Bit Depth & Color Representation</h3>
+                    <p class="text-sm text-gray-500 mb-4">Higher bit depth reduces color banding and allows for smoother, more accurate gradients.</p>
+                     <div class="chart-container">
+                        <canvas id="bitDepthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="hvs" class="section-card">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 text-center">The Human Factor: Why HDR Matters</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8 text-center">The design of HDR technology is fundamentally driven by the capabilities of the Human Visual System (HVS). HDR aims to create an image on screen that more closely matches what our eyes perceive in the real world in terms of brightness, contrast, and color. This section explores the key perceptual phenomena that HDR technologies are engineered to accommodate.</p>
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Luminance Perception & Weber-Fechner Law</h3>
+                        <p class="text-gray-600">Our eyes don't perceive brightness linearly. We are far more sensitive to changes in dark areas than in bright ones. HDR's Perceptual Quantizer (PQ) transfer function is based on this principle, allocating more data to the shadow and mid-tone details our eyes are most sensitive to, optimizing data efficiency.</p>
+                    </div>
+                     <div>
+                        <h3 class="text-xl font-semibold mb-2">Color Perception & Rec. 2020</h3>
+                        <p class="text-gray-600">The human eye can perceive a vast range of colors. HDR leverages the Wide Color Gamut of Rec. 2020 to reproduce a larger portion of these colors compared to SDR's Rec. 709, resulting in richer, more lifelike images.</p>
+                    </div>
+                </div>
+                <div>
+                     <h3 class="text-xl font-semibold mb-2 text-center">Comparing Color Gamuts</h3>
+                     <p class="text-sm text-gray-500 mb-4 text-center">Visualize the expanded color range of Rec. 2020 compared to the traditional Rec. 709 gamut.</p>
+                    <div class="chart-container">
+                        <canvas id="colorGamutChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tech" class="section-card">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 text-center">Core Technologies: Transfer Functions</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8 text-center">Transfer functions are mathematical models that map digital code values to light levels on a display. HDR uses advanced transfer functions like Perceptual Quantizer (PQ) and Hybrid Log-Gamma (HLG) to manage its vast dynamic range, each with distinct characteristics and applications. The chart below visualizes how they map signal values to absolute luminance.</p>
+            <div class="chart-container" style="height: 400px; max-height: 500px;">
+                <canvas id="transferFunctionChart"></canvas>
+            </div>
+            <div class="mt-8 grid md:grid-cols-2 gap-8">
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-2">Perceptual Quantizer (PQ)</h3>
+                    <p class="text-gray-600">An absolute, perceptually uniform transfer function designed for mastering. It maps code values to absolute luminance levels (nits) up to 10,000 nits, making it ideal for cinematic content where precise creative control is paramount. It relies on metadata for optimal display on consumer devices.</p>
+                </div>
+                 <div class="bg-gray-50 p-6 rounded-lg">
+                    <h3 class="text-xl font-semibold mb-2">Hybrid Log-Gamma (HLG)</h3>
+                    <p class="text-gray-600">A relative, display-referred transfer function designed for broadcast. Its key advantage is backward compatibility; a single HLG signal can be displayed on both HDR and SDR screens without special metadata. This makes it a practical solution for live production and broadcasting.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="formats" class="section-card">
+             <h2 class="text-3xl font-bold text-gray-900 mb-4 text-center">HDR Formats & Display Technologies</h2>
+             <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8 text-center">The HDR landscape consists of various formats and display technologies, each with unique technical specifications and ecosystem support. Use the tabs below to compare the leading HDR formats and the display technologies that bring them to life. This comparison is vital for engineers making decisions in production, distribution, and hardware evaluation.</p>
+            
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-center mb-4">HDR Format Comparison</h3>
+                <div id="format-tabs" class="flex justify-center space-x-2 p-1 rounded-lg">
+                    <button class="tab-button active px-4 py-2 text-sm font-medium" onclick="showTab('format', 'hdr10')">HDR10</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium" onclick="showTab('format', 'hdr10plus')">HDR10+</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium" onclick="showTab('format', 'dolby')">Dolby Vision</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium" onclick="showTab('format', 'hlg')">HLG</button>
+                </div>
+                <div id="format-content" class="mt-4 p-6 bg-gray-50 rounded-lg">
+                </div>
+            </div>
+
+            <div>
+                 <h3 class="text-2xl font-semibold text-center mb-4">HDR Display Technology Comparison</h3>
+                <div id="display-tabs" class="flex justify-center space-x-2 p-1 rounded-lg">
+                    <button class="tab-button active px-4 py-2 text-sm font-medium" onclick="showTab('display', 'oled')">OLED</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium" onclick="showTab('display', 'qled')">QLED</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium" onclick="showTab('display', 'microled')">MicroLED</button>
+                </div>
+                <div id="display-content" class="mt-4 p-6 bg-gray-50 rounded-lg">
+                </div>
+            </div>
+        </section>
+        
+        <section id="workflow" class="section-card">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 text-center">The HDR Production & Distribution Workflow</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8 text-center">Engineering HDR video requires a comprehensive approach across the entire pipeline, from initial capture to final delivery. Each stage has unique technical considerations to ensure the integrity and quality of the HDR signal is maintained, delivering a consistent and high-quality experience to the viewer regardless of the distribution channel.</p>
+            
+            <div class="space-y-8">
+                <div class="grid md:grid-cols-3 gap-8 text-center">
+                    <div class="bg-gray-50 p-6 rounded-lg">
+                        <div class="text-4xl text-orange-600 mb-3">①</div>
+                        <h3 class="text-xl font-semibold mb-2">Acquisition</h3>
+                        <p class="text-gray-600 text-sm">Capture using cameras with high dynamic range sensors (14+ stops), 10/12-bit depth, and log encoding formats to preserve maximum detail.</p>
+                    </div>
+                     <div class="bg-gray-50 p-6 rounded-lg">
+                        <div class="text-4xl text-orange-600 mb-3">②</div>
+                        <h3 class="text-xl font-semibold mb-2">Post-Production</h3>
+                        <p class="text-gray-600 text-sm">Grade in a calibrated HDR suite, working in nits. Manage color spaces and use HDR-specific tools to adjust tone mapping and master for various formats (HDR10, Dolby Vision, etc.).</p>
+                    </div>
+                     <div class="bg-gray-50 p-6 rounded-lg">
+                        <div class="text-4xl text-orange-600 mb-3">③</div>
+                        <h3 class="text-xl font-semibold mb-2">Distribution</h3>
+                        <p class="text-gray-600 text-sm">Deliver via streaming (DASH/HLS with HEVC/AV1 codecs), broadcast (ATSC 3.0), or physical media (Ultra HD Blu-ray), ensuring metadata is preserved across the channel.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="scam" class="section-card">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4 text-center">Is HDR a "Scam"?</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 text-justify">
+                While HDR technology offers objectively superior capabilities, it is sometimes labeled a "scam" by consumers. This perception doesn't stem from flaws in the technology itself, but from its frequent misuse and mishandling across the ecosystem. The highly standardized and mature nature of SDR means that most content and displays deliver a consistent, predictable experience. HDR, being more complex, introduces more points of failure. When HDR content is poorly mastered with incorrect metadata, or when displays marketed as "HDR compatible" lack the necessary peak brightness, contrast, or color gamut to render it properly, the result can be an image that looks worse than its SDR counterpart—often appearing too dark, washed out, or with unnatural colors. This inconsistent and sometimes disappointing outcome, driven by poor implementation rather than technological shortcomings, is the root of the "scam" narrative.
+            </p>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 text-justify"><strong>TLDR: HDR is not a scam, it is a very powerful technology that is easy to misuse.</strong></p>
+        </section>
+
+    </main>
+    
+    <footer class="bg-white border-t border-gray-200 mt-8">
+        <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-gray-500">
+            <p>&copy; 2025 Neurophasia.com <br> Part of the Neurophasia Archive</p>
+        </div>
+    </footer>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const dynamicRangeData = {
+                labels: ['SDR', 'HDR'],
+                datasets: [{
+                    label: 'Stops of Dynamic Range',
+                    data: [6, 17.6],
+                    backgroundColor: ['#A9A9A9', '#D35400'],
+                    borderColor: ['#A9A9A9', '#D35400'],
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            };
+
+            new Chart(document.getElementById('dynamicRangeChart'), {
+                type: 'bar',
+                data: dynamicRangeData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Stops' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.raw} stops`
+                            }
+                        }
+                    }
+                }
+            });
+
+            const bitDepthData = {
+                labels: ['SDR (8-bit)', 'HDR (10-bit)'],
+                datasets: [{
+                    label: 'Colors',
+                    data: [16700000, 1070000000],
+                    backgroundColor: ['#A9A9A9', '#D35400'],
+                    borderColor: ['#A9A9A9', '#D35400'],
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            };
+
+            new Chart(document.getElementById('bitDepthChart'), {
+                type: 'bar',
+                data: bitDepthData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Number of Colors (Log Scale)' },
+                            min: 10000000, 
+                            max: 10000000000,
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const log10 = Math.log10(value);
+                                    if (log10 === Math.floor(log10)) {
+                                        if (value >= 10000000000) return '10 Billion';
+                                        if (value >= 1000000000) return '1 Billion';
+                                        if (value >= 100000000) return '100 Million';
+                                        if (value >= 10000000) return '10 Million';
+                                    }
+                                    return '';
+                                },
+                            },
+                            grid: {
+                                color: function(context) {
+                                    const value = context.tick.value;
+                                    const log10 = Math.log10(value);
+                                    if (log10 === Math.floor(log10)) {
+                                        return 'rgba(0, 0, 0, 0.1)'; // Major gridline color
+                                    }
+                                    return 'transparent'; // Hide minor gridlines
+                                },
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${context.raw.toLocaleString()} colors`
+                            }
+                        }
+                    }
+                }
+            });
+
+            const colorGamutData = {
+                labels: ['Rec. 709 (SDR)', 'Rec. 2020 (HDR)'],
+                datasets: [{
+                    label: 'Color Gamut Coverage',
+                    data: [35.9, 75.8],
+                    backgroundColor: ['#A9A9A9', '#D35400'],
+                    hoverOffset: 4
+                }]
+            };
+            
+            new Chart(document.getElementById('colorGamutChart'), {
+                type: 'doughnut',
+                data: colorGamutData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.label}: Covers ~${context.raw}% of CIE 1931`
+                            }
+                        },
+                        title: { display: true, text: 'Gamut Coverage of CIE 1931 Color Space' }
+                    }
+                }
+            });
+            
+            const tfLabels = Array.from({length: 101}, (_, i) => i / 100);
+            const c1 = 0.8359375, c2 = 18.8515625, c3 = 18.6875, m = 78.84375, n = 0.1593017578125;
+            const pqCurve = tfLabels.map(v => {
+                if (v === 0) return 0;
+                const Y = Math.pow( (Math.max(0, Math.pow(v, 1/m) - c1)) / (c2 - c3 * Math.pow(v, 1/m)), 1/n);
+                return Y * 10000;
+            });
+            
+            const hlgCurve = tfLabels.map(E_prime => {
+                 const a = 0.17883277;
+                 const b = 0.28466892;
+                 const c = 0.55991073;
+                 let L;
+                 if (E_prime <= 0.5) {
+                    L = Math.pow(E_prime, 2) / 3.0;
+                 } else {
+                    L = (Math.exp((E_prime - c) / a) + b) / 12.0;
+                 }
+                 return L * 1000; // Scaled to a 1000-nit display
+            });
+            
+            new Chart(document.getElementById('transferFunctionChart'), {
+                type: 'line',
+                data: {
+                    labels: tfLabels.map(l => l.toFixed(2)),
+                    datasets: [
+                        {
+                            label: 'PQ (up to 10,000 nits)',
+                            data: pqCurve,
+                            borderColor: '#D35400',
+                            backgroundColor: 'rgba(211, 84, 0, 0.1)',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0,
+                        },
+                        {
+                            label: 'HLG (relative, shown for 1000 nits)',
+                            data: hlgCurve,
+                            borderColor: '#2980B9',
+                            backgroundColor: 'rgba(41, 128, 185, 0.1)',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Normalized Signal Value' },
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Luminance (nits) - Log Scale' },
+                            min: 0.1,
+                            max: 10000,
+                             ticks: {
+                                callback: function(value, index, values) {
+                                    const log10 = Math.log10(value);
+                                    if(log10 === Math.floor(log10) || value === 0.1) {
+                                       return value.toLocaleString();
+                                    }
+                                    return '';
+                                }
+                            },
+                             grid: {
+                                color: function(context) {
+                                    const value = context.tick.value;
+                                    const log10 = Math.log10(value);
+                                    if (log10 === Math.floor(log10) || value === 0.1) {
+                                        return 'rgba(0, 0, 0, 0.1)';
+                                    }
+                                    return 'transparent';
+                                },
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'HDR Transfer Functions' },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += `${context.parsed.y.toFixed(2)} nits`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                     interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                }
+            });
+
+
+            const formatData = {
+                hdr10: {
+                    title: "HDR10",
+                    content: `
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><strong>Metadata:</strong> Static (MaxCLL/MaxFALL for the entire film)</li>
+                            <li><strong>Bit Depth:</strong> 10-bit</li>
+                            <li><strong>Transfer Function:</strong> PQ (ST 2084)</li>
+                            <li><strong>Licensing:</strong> Royalty-free, open standard</li>
+                            <li><strong>Key Feature:</strong> Baseline HDR format with wide compatibility. Tone mapping is determined by the display based on single data points for the whole content.</li>
+                        </ul>`
+                },
+                hdr10plus: {
+                    title: "HDR10+",
+                    content: `
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><strong>Metadata:</strong> Dynamic (scene-by-scene or frame-by-frame)</li>
+                            <li><strong>Bit Depth:</strong> 10-bit</li>
+                            <li><strong>Transfer Function:</strong> PQ (ST 2084)</li>
+                            <li><strong>Licensing:</strong> Royalty-free, open standard</li>
+                            <li><strong>Key Feature:</strong> Adds dynamic metadata to HDR10, allowing displays to adjust brightness and contrast for each scene, improving detail preservation.</li>
+                        </ul>`
+                },
+                dolby: {
+                    title: "Dolby Vision",
+                    content: `
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><strong>Metadata:</strong> Dynamic (frame-by-frame)</li>
+                            <li><strong>Bit Depth:</strong> 12-bit capable</li>
+                            <li><strong>Transfer Function:</strong> PQ (ST 2084)</li>
+                            <li><strong>Licensing:</strong> Proprietary, requires fees for mastering and hardware</li>
+                            <li><strong>Key Feature:</strong> Premium format with the most granular metadata and higher bit depth, enabling highly precise, creator-intended tone mapping on certified displays.</li>
+                        </ul>`
+                },
+                hlg: {
+                    title: "HLG (Hybrid Log-Gamma)",
+                    content: `
+                        <ul class="list-disc list-inside space-y-2 text-gray-700">
+                            <li><strong>Metadata:</strong> None required (display-referred)</li>
+                            <li><strong>Bit Depth:</strong> 10-bit</li>
+                            <li><strong>Transfer Function:</strong> Hybrid Log-Gamma</li>
+                            <li><strong>Licensing:</strong> Royalty-free</li>
+                            <li><strong>Key Feature:</strong> Designed for broadcast with backward compatibility. A single signal works for both SDR and HDR displays, simplifying live production workflows.</li>
+                        </ul>`
+                }
+            };
+            
+            const displayData = {
+                oled: {
+                     title: "OLED (Organic Light-Emitting Diode)",
+                     content: `<ul class="list-disc list-inside space-y-2 text-gray-700">
+                                <li><strong>Key Strength:</strong> Self-emissive pixels that can be turned off completely, enabling perfect black levels and infinite contrast.</li>
+                                <li><strong>Peak Brightness:</strong> Good (typically 800-1500 nits), but can be lower than top-tier LED based displays.</li>
+                                <li><strong>Contrast Ratio:</strong> Infinite - each pixel can be turned completely off for true black levels.</li>
+                                <li><strong>Color Accuracy:</strong> Excellent, with extremely wide viewing angles and natural color reproduction.</li>
+                             </ul>`
+                },
+                qled: {
+                    title: "QLED (Quantum Dot LED)",
+                     content: `<ul class="list-disc list-inside space-y-2 text-gray-700">
+                                <li><strong>Key Strength:</strong> Very high peak brightness and large color volume, thanks to quantum dot enhancement of LED backlight.</li>
+                                <li><strong>Peak Brightness:</strong> Excellent (typically 1000-3000+ nits), ideal for bright room viewing.</li>
+                                <li><strong>Contrast Ratio:</strong> High, but not infinite. Relies on local dimming zones to achieve deep blacks.</li>
+                                <li><strong>Color Accuracy:</strong> Very good, capable of highly saturated colors with wide color gamut coverage.</li>
+                             </ul>`
+                },
+                microled: {
+                    title: "MicroLED",
+                     content: `<ul class="list-disc list-inside space-y-2 text-gray-700">
+                                <li><strong>Key Strength:</strong> Combines the best of OLED and QLED - self-emissive inorganic LEDs with high brightness capability.</li>
+                                <li><strong>Peak Brightness:</strong> Potentially very high (>2000 nits) with excellent efficiency and no burn-in risk.</li>
+                                <li><strong>Contrast Ratio:</strong> Infinite - self-emissive pixels can achieve perfect blacks like OLED.</li>
+                                <li><strong>Color Accuracy:</strong> Expected to be exceptional with high durability and wide color gamut reproduction.</li>
+                             </ul>`
+                }
+            };
+
+            window.showTab = (type, id) => {
+                const data = type === 'format' ? formatData : displayData;
+                const tabs = document.querySelectorAll(`#${type}-tabs .tab-button`);
+                tabs.forEach(tab => tab.classList.remove('active'));
+                
+                const contentContainer = document.getElementById(`${type}-content`);
+                
+                const selectedTab = document.querySelector(`#${type}-tabs button[onclick="showTab('${type}', '${id}')"]`);
+                selectedTab.classList.add('active');
+                
+                contentContainer.innerHTML = data[id].content;
+            };
+
+            showTab('format', 'hdr10');
+            showTab('display', 'oled');
+            
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('section');
+
+            const activateNavLink = () => {
+                let index = sections.length;
+                while(--index && window.scrollY + 50 < sections[index].offsetTop) {}
+                
+                navLinks.forEach((link) => link.classList.remove('active'));
+                const activeLink = document.querySelector(`.nav-link[href="#${sections[index].id}"]`);
+                if (activeLink) {
+                   activeLink.classList.add('active');
+                }
+            };
+
+            window.addEventListener('scroll', activateNavLink);
+            activateNavLink();
+
+            const mobileNav = document.getElementById('mobile-nav');
+            mobileNav.addEventListener('change', () => {
+                window.location.hash = mobileNav.value;
+            });
+        });
+
+    </script>
+</body>
+</html>

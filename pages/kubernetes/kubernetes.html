@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Cool Neutral" -->
+    <!-- Application Structure Plan: The application is structured as a thematic, single-page dashboard. This design choice moves away from the linear report format to a more exploratory user experience. The structure includes: 1. A sticky top navigation bar for quick access to key sections. 2. A "Hero" section to introduce Kubernetes and its core purpose. 3. A "Core Concepts" section using interactive cards to explain foundational elements like Pods and Services. 4. An "Architecture Deep Dive" with a clickable diagram to visually explore the Control Plane and Worker Nodes. 5. A "Workload Comparison" section using a dynamic chart and detailed toggles to compare Deployments, StatefulSets, etc. 6. A "Use Cases" section with filterable cards to showcase real-world applications. This non-linear, interactive structure was chosen to cater to different user knowledge levels; a novice can learn sequentially, while an expert can jump directly to a specific topic of interest, enhancing usability and knowledge retention. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Kubernetes Architecture (Control Plane/Worker Nodes). Goal: Organize & Inform. Viz: Interactive diagram built with HTML/Tailwind. Interaction: Clicking on a component (e.g., API Server) reveals a detailed description. Justification: A visual, interactive diagram is more intuitive for understanding system architecture than a static list. Library: Vanilla JS + Tailwind CSS.
+        - Report Info: Workload Resources (Deployment, StatefulSet, etc.). Goal: Compare. Viz: An interactive comparison matrix instead of a chart. Interaction: Buttons switch the comparison metric, dynamically updating the matrix with icons and text to show features like 'Pod Identity' and 'Storage Management'. Justification: A matrix is a more direct and clearer way to compare binary/categorical features than a bar chart. Library: Vanilla JS + Tailwind CSS.
+        - Report Info: Use Cases (Microservices, CI/CD, AI/ML). Goal: Inform & Organize. Viz: Filterable cards. Interaction: Users can click filter buttons ('All', 'Web', 'Data', 'DevOps') to sort and view relevant use cases. Justification: Filtering allows users to quickly find applications relevant to their field of interest, making the information more personalized and less overwhelming. Library: Vanilla JS + Tailwind CSS.
+        - Report Info: Kubernetes vs. Alternatives. Goal: Compare. Viz: Interactive comparison table. Justification: A table provides a structured and direct comparison, which is ideal for decision-making. Library: HTML/Tailwind + JS for interactivity.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #4f46e5; /* indigo-600 */
+            border-bottom-color: #4f46e5;
+        }
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .component-interactive {
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .component-interactive:hover, .component-interactive.selected {
+            background-color: #eef2ff; /* indigo-50 */
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .filter-btn {
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .filter-btn.active {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        /* Active section indicator */
+        .section-indicator {
+            position: fixed;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .indicator-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 9999px;
+            background-color: #cbd5e1; /* slate-300 */
+            transition: background-color 0.3s, transform 0.3s;
+            cursor: pointer;
+        }
+        .indicator-dot.active {
+            background-color: #4f46e5; /* indigo-600 */
+            transform: scale(1.25);
+        }
+    </style>
+</head>
+<body class="antialiased flex flex-col min-h-screen">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="https://neurophasia.com" class="font-bold text-xl text-indigo-600 hover:text-indigo-800 transition-colors">Neurophasia</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#introduction" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700">Introduction</a>
+                        <a href="#architecture" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700">Architecture</a>
+                        <a href="#workloads" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700">Workloads</a>
+                        <a href="#use-cases" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700">Use Cases</a>
+                        <a href="#challenges" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700">Challenges</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+    
+    <!-- Section Indicator Dots -->
+    <div id="section-indicator-container" class="section-indicator"></div>
+
+    <main class="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        
+        <!-- Section: Introduction -->
+        <section id="introduction" class="scroll-mt-20 text-center mb-20 md:mb-32">
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-4">Understanding Kubernetes</h1>
+            <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-600">
+                This abstract breaks down Kubernetes, the de facto standard for container orchestration. We'll explore what it is, how its architecture works, and where it's best applied—all through interactive visualizations and digestible content.
+            </p>
+        </section>
+        
+        <!-- Section: Core Concepts -->
+        <section id="core-concepts" class="scroll-mt-20 mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Core Concepts</h2>
+                <p class="mt-4 text-lg text-slate-600">Kubernetes is built on a set of fundamental objects and principles. This section introduces the most important building blocks you'll encounter. Understanding these concepts is the first step to mastering Kubernetes.</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="card bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-lg text-indigo-600 mb-2">📦 Pods: The Smallest Unit</h3>
+                    <p class="text-slate-600">A Pod is the most basic deployable unit in Kubernetes. It represents a single instance of a running process and encapsulates one or more tightly coupled containers, which share storage, a network IP, and operational configurations.</p>
+                </div>
+                <div class="card bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-lg text-indigo-600 mb-2">🌐 Services: Stable Networking</h3>
+                    <p class="text-slate-600">Since Pods are ephemeral, Services provide a stable endpoint (a fixed IP address and DNS name) to access a logical set of Pods. They enable reliable communication and load balancing between application components.</p>
+                </div>
+                <div class="card bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-lg text-indigo-600 mb-2">💾 Volumes: Persistent Data</h3>
+                    <p class="text-slate-600">Volumes allow data to persist beyond the lifecycle of a single Pod. Kubernetes supports many types, from local storage on a node to durable storage from cloud providers, managed through PersistentVolumes (PV) and PersistentVolumeClaims (PVC).</p>
+                </div>
+                <div class="card bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-lg text-indigo-600 mb-2">🏷️ Labels & Selectors</h3>
+                    <p class="text-slate-600">Labels are key/value pairs attached to objects like Pods. Selectors are used to query and identify objects based on their labels. This is the core grouping mechanism that connects Services to Pods and organizes resources.</p>
+                </div>
+                <div class="card bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-lg text-indigo-600 mb-2">🏢 Namespaces: Virtual Clusters</h3>
+                    <p class="text-slate-600">Namespaces provide a way to divide cluster resources between multiple users or teams. They create isolated environments for different projects, helping to organize resources and manage access control.</p>
+                </div>
+                <div class="card bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-semibold text-lg text-indigo-600 mb-2">📜 Declarative Model</h3>
+                    <p class="text-slate-600">You declare the *desired state* of your application in YAML files. Kubernetes controllers then continuously work to make the *actual state* match the desired state, enabling powerful automation and self-healing.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Architecture -->
+        <section id="architecture" class="scroll-mt-20 mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Interactive Architecture Deep Dive</h2>
+                <p class="mt-4 text-lg text-slate-600">A Kubernetes cluster consists of a Control Plane (the brain) and Worker Nodes (the muscle). Click on the components below to explore their roles and interactions. This visual guide helps clarify how Kubernetes manages to orchestrate applications so effectively.</p>
+            </div>
+            <div class="lg:flex lg:gap-8">
+                <!-- Diagram -->
+                <div class="lg:w-1/2 bg-white p-6 rounded-lg shadow-lg mb-8 lg:mb-0">
+                    <h3 class="font-bold text-xl mb-4 text-center">Kubernetes Cluster</h3>
+                    <div class="border-2 border-dashed border-slate-300 p-4 rounded-lg">
+                        <!-- Control Plane -->
+                        <div class="bg-indigo-100/50 p-4 rounded-lg mb-4">
+                            <h4 class="font-semibold text-lg text-center text-indigo-800 mb-3">🧠 Control Plane</h4>
+                            <div class="grid grid-cols-2 gap-3 text-center">
+                                <div id="arch-apiserver" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">API Server</div>
+                                <div id="arch-etcd" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">etcd</div>
+                                <div id="arch-scheduler" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">Scheduler</div>
+                                <div id="arch-controller" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">Controller Mgr</div>
+                            </div>
+                        </div>
+                        <!-- Worker Nodes -->
+                        <div class="bg-blue-100/50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-lg text-center text-blue-800 mb-3">💪 Worker Node</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
+                                <div id="arch-kubelet" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">Kubelet</div>
+                                <div id="arch-kubeproxy" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">Kube-proxy</div>
+                                <div id="arch-runtime" class="component-interactive bg-white p-3 rounded-md border-2 border-slate-200">Container Runtime</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Description -->
+                <div id="architecture-details" class="lg:w-1/2 p-6 rounded-lg bg-slate-100 flex items-center justify-center fade-in">
+                    <div class="text-center">
+                        <p class="text-slate-600 text-lg">Click a component on the left to see its description here.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: Workloads -->
+        <section id="workloads" class="scroll-mt-20 mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Comparing Workload Resources</h2>
+                <p class="mt-4 text-lg text-slate-600">Kubernetes offers different "workload resources" to run applications. The choice depends on whether your app is stateful or stateless, a one-off task, or a daemon. This section provides an interactive comparison to help you understand their key differences.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="text-center mb-6">
+                    <span class="font-medium">Compare by:</span>
+                    <div id="workload-controls" class="inline-flex rounded-md shadow-sm mt-2" role="group">
+                        <button type="button" data-metric="identity" class="filter-btn active px-4 py-2 text-sm font-medium text-slate-900 bg-white border border-slate-200 rounded-l-lg hover:bg-slate-100 focus:z-10 focus:ring-2 focus:ring-indigo-500">Pod Identity</button>
+                        <button type="button" data-metric="storage" class="filter-btn px-4 py-2 text-sm font-medium text-slate-900 bg-white border-t border-b border-slate-200 hover:bg-slate-100 focus:z-10 focus:ring-2 focus:ring-indigo-500">Storage</button>
+                        <button type="button" data-metric="usecase" class="filter-btn px-4 py-2 text-sm font-medium text-slate-900 bg-white border border-slate-200 rounded-r-md hover:bg-slate-100 focus:z-10 focus:ring-2 focus:ring-indigo-500">Use Case</button>
+                    </div>
+                </div>
+                
+                <div id="workload-comparison-container" class="mb-8 p-4 bg-slate-50 rounded-lg min-h-[160px] flex items-center fade-in">
+                    <!-- Comparison matrix will be populated by JS -->
+                </div>
+
+                <div id="workload-details" class="mt-6 grid md:grid-cols-2 gap-6">
+                    <!-- Details will be populated by JS -->
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section: Use Cases -->
+        <section id="use-cases" class="scroll-mt-20 mb-20 md:mb-32">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Real-World Use Cases</h2>
+                <p class="mt-4 text-lg text-slate-600">Kubernetes is a versatile platform powering a vast range of applications. From complex microservices to cutting-edge AI/ML pipelines, its capabilities are broad. Filter through the cards below to see how it's applied across different domains.</p>
+            </div>
+            <div class="flex justify-center mb-8 space-x-2">
+                <button class="use-case-filter filter-btn active px-4 py-2 text-sm font-medium rounded-full border border-slate-300" data-filter="all">All</button>
+                <button class="use-case-filter filter-btn px-4 py-2 text-sm font-medium rounded-full border border-slate-300" data-filter="web">Web & Microservices</button>
+                <button class="use-case-filter filter-btn px-4 py-2 text-sm font-medium rounded-full border border-slate-300" data-filter="data">AI, ML & Big Data</button>
+                <button class="use-case-filter filter-btn px-4 py-2 text-sm font-medium rounded-full border border-slate-300" data-filter="devops">DevOps & Automation</button>
+            </div>
+            <div id="use-cases-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Use cases will be populated by JS -->
+            </div>
+        </section>
+
+        <!-- Section: Challenges & Alternatives -->
+        <section id="challenges" class="scroll-mt-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Is Kubernetes Always the Answer?</h2>
+                <p class="mt-4 text-lg text-slate-600">While powerful, Kubernetes introduces complexity and operational overhead. It's not the right fit for every project. This section explores its main challenges and compares it to simpler alternatives to provide a balanced perspective.</p>
+            </div>
+            <div class="grid lg:grid-cols-2 gap-12">
+                <div>
+                    <h3 class="font-semibold text-2xl mb-4">Key Challenges</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-xl mr-3">🎢</span>
+                            <div>
+                                <h4 class="font-medium">Steep Learning Curve</h4>
+                                <p class="text-slate-500">Mastering its numerous components and concepts requires significant time and investment in training.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-xl mr-3">💰</span>
+                            <div>
+                                <h4 class="font-medium">Cost & Operational Overhead</h4>
+                                <p class="text-slate-500">Managing a cluster, plus the resource consumption of the system itself, can be costly and operationally intensive.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-xl mr-3">🔒</span>
+                            <div>
+                                <h4 class="font-medium">Security Complexity</h4>
+                                <p class="text-slate-500">Security is a shared responsibility. Proper configuration of RBAC, Network Policies, and Secrets is critical and complex.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="font-semibold text-2xl mb-4 text-center">Kubernetes vs. Alternatives</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-slate-500">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Aspect</th>
+                                    <th scope="col" class="px-6 py-3">Kubernetes</th>
+                                    <th scope="col" class="px-6 py-3">Docker Swarm</th>
+                                    <th scope="col" class="px-6 py-3">PaaS (Heroku)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="bg-white border-b">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">Ease of Use</th>
+                                    <td class="px-6 py-4">Complex</td>
+                                    <td class="px-6 py-4">Easy</td>
+                                    <td class="px-6 py-4">Very Easy</td>
+                                </tr>
+                                <tr class="bg-slate-50 border-b">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">Control</th>
+                                    <td class="px-6 py-4">High</td>
+                                    <td class="px-6 py-4">Medium</td>
+                                    <td class="px-6 py-4">Low</td>
+                                </tr>
+                                <tr class="bg-white border-b">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">Portability</th>
+                                    <td class="px-6 py-4">High</td>
+                                    <td class="px-6 py-4">Medium</td>
+                                    <td class="px-6 py-4">Low (Vendor lock-in)</td>
+                                </tr>
+                                 <tr class="bg-slate-50">
+                                    <th scope="row" class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">Best For</th>
+                                    <td class="px-6 py-4">Complex, large-scale apps</td>
+                                    <td class="px-6 py-4">Simple apps, smaller teams</td>
+                                    <td class="px-6 py-4">MVPs, rapid development</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="bg-white border-t border-slate-200 mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-slate-500 text-sm">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p>Part of the Neurophasia Archive</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const architectureData = {
+                'arch-apiserver': {
+                    title: 'API Server (kube-apiserver)',
+                    description: 'The front-end for the Kubernetes control plane. It exposes the Kubernetes API, processing and validating REST requests to change the state of objects like Pods and Services in the `etcd` store.'
+                },
+                'arch-etcd': {
+                    title: 'etcd',
+                    description: "The cluster's brainstem. A consistent and highly-available key-value store used as Kubernetes' backing store for all cluster data, including configurations and current state. Its integrity is paramount."
+                },
+                'arch-scheduler': {
+                    title: 'Scheduler (kube-scheduler)',
+                    description: 'Assigns newly created Pods to a suitable Worker Node. It makes this decision based on resource requirements, policies, and affinity/anti-affinity rules to ensure optimal workload distribution.'
+                },
+                'arch-controller': {
+                    title: 'Controller Manager',
+                    description: 'Runs controller processes that act as reconciliation loops. They watch the cluster state via the API Server and make changes to drive the current state towards the desired state (e.g., ensuring the right number of Pod replicas are running).'
+                },
+                'arch-kubelet': {
+                    title: 'Kubelet',
+                    description: 'An agent that runs on every Worker Node. It ensures that containers described in Pod specifications are running and healthy. It communicates with the API server to receive instructions and report status.'
+                },
+                'arch-kubeproxy': {
+                    title: 'Kube-proxy',
+                    description: 'A network proxy running on each node that maintains network rules. It enables the Kubernetes Service concept, routing traffic destined for a Service to the correct backend Pods.'
+                },
+                'arch-runtime': {
+                    title: 'Container Runtime',
+                    description: 'The software responsible for running containers. Kubernetes supports several runtimes like containerd and CRI-O. The Kubelet interacts with the runtime to manage the container lifecycle on the node.'
+                }
+            };
+            
+            const workloadDetailsData = [
+                { 
+                    id: 'Deployment', 
+                    title: 'Deployment (Stateless Apps)', 
+                    description: 'Manages stateless applications with rolling updates and rollbacks. Pods are fungible and interchangeable. Ideal for web servers and API gateways.',
+                    identity: { text: 'Fungible', icon: '🔄' },
+                    storage: { text: 'No', icon: '❌'},
+                    usecase: 'Best for stateless apps like web servers that can be easily replaced.'
+                },
+                { 
+                    id: 'StatefulSet', 
+                    title: 'StatefulSet (Stateful Apps)', 
+                    description: 'Manages stateful applications requiring stable, unique network identifiers and persistent storage. Guarantees ordering in deployment and scaling. Perfect for databases.',
+                    identity: { text: 'Stable & Unique', icon: '🆔' },
+                    storage: { text: 'Yes', icon: '✔️' },
+                    usecase: 'Essential for stateful apps like databases that need a stable identity.'
+                },
+                { 
+                    id: 'DaemonSet', 
+                    title: 'DaemonSet (Node Daemons)', 
+                    description: 'Ensures a copy of a Pod runs on all (or a subset of) nodes in the cluster. Used for cluster-level services like log collectors and monitoring agents.',
+                    identity: { text: 'Fungible', icon: '🔄' },
+                    storage: { text: 'No', icon: '❌'},
+                    usecase: 'Runs one Pod per node for agents like logging or monitoring.'
+                },
+                { 
+                    id: 'Job', 
+                    title: 'Job & CronJob (Batch Tasks)', 
+                    description: 'A Job runs batch tasks to completion, while a CronJob runs Jobs on a schedule. Ideal for one-off computations, migrations, or scheduled backups.',
+                    identity: { text: 'Fungible', icon: '🔄' },
+                    storage: { text: 'No', icon: '❌'},
+                    usecase: 'Runs tasks to completion, perfect for batch processing or migrations.'
+                 },
+            ];
+            
+            const useCasesData = [
+                { category: 'web', title: 'Microservices Orchestration', description: 'The primary use case. K8s allows independent scaling, deployment, and management of hundreds of small services.' },
+                { category: 'web', title: 'Scalable Web Apps', description: 'Handles variable traffic with high availability using Horizontal Pod Autoscaling and self-healing.' },
+                { category: 'devops', title: 'CI/CD Automation', description: 'Integrates with tools like Jenkins & ArgoCD to automate the entire software delivery pipeline, from build to production.' },
+                { category: 'web', title: 'Hybrid & Multi-Cloud', description: 'Provides a consistent operational plane across public clouds and on-premise data centers, avoiding vendor lock-in.' },
+                { category: 'data', title: 'AI/ML with Kubeflow', description: 'Kubeflow on K8s simplifies deploying, scaling, and managing complex machine learning workflows.' },
+                { category: 'devops', title: 'Serverless with Knative', description: 'Extends K8s to build and run serverless applications that can scale to zero, optimizing resource costs.'},
+                { category: 'data', title: 'Big Data Processing', description: 'Manages frameworks like Apache Spark, improving efficiency for resource-intensive data processing jobs.'},
+                { category: 'devops', title: 'Internal PaaS', description: 'Large organizations build custom Platform-as-a-Service solutions on K8s to improve developer productivity.'},
+                { category: 'web', title: 'Edge Computing & IoT', description: 'Lightweight K8s distributions manage applications on resource-constrained devices at the network edge.'}
+            ];
+
+            const sections = document.querySelectorAll('main section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sectionIndicatorContainer = document.getElementById('section-indicator-container');
+
+            function createIndicatorDots() {
+                sections.forEach(section => {
+                    const heading = section.querySelector('h1, h2');
+                    if (heading) {
+                        const dot = document.createElement('div');
+                        dot.classList.add('indicator-dot');
+                        dot.dataset.section = section.id;
+                        dot.setAttribute('title', heading.textContent);
+                        dot.addEventListener('click', () => {
+                            section.scrollIntoView({ behavior: 'smooth' });
+                        });
+                        sectionIndicatorContainer.appendChild(dot);
+                    }
+                });
+            }
+
+            function updateActiveLink() {
+                let currentSection = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 80) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${currentSection}`) {
+                        link.classList.add('active');
+                    }
+                });
+                
+                document.querySelectorAll('.indicator-dot').forEach(dot => {
+                    dot.classList.remove('active');
+                    if(dot.dataset.section === currentSection) {
+                        dot.classList.add('active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', updateActiveLink);
+            createIndicatorDots();
+            updateActiveLink();
+
+
+            const archDetailsContainer = document.getElementById('architecture-details');
+            document.querySelectorAll('.component-interactive').forEach(component => {
+                component.addEventListener('click', function() {
+                    const componentId = this.id;
+                    const data = architectureData[componentId];
+                    
+                    document.querySelectorAll('.component-interactive').forEach(el => el.classList.remove('selected'));
+                    this.classList.add('selected');
+
+                    archDetailsContainer.innerHTML = `
+                        <div class="text-left fade-in">
+                            <h4 class="font-bold text-xl text-indigo-700 mb-2">${data.title}</h4>
+                            <p class="text-slate-700">${data.description}</p>
+                        </div>
+                    `;
+                });
+            });
+
+            const workloadComparisonContainer = document.getElementById('workload-comparison-container');
+            const workloadDetailsContainer = document.getElementById('workload-details');
+
+            function renderWorkloadDetails() {
+                workloadDetailsContainer.innerHTML = workloadDetailsData.map(item => `
+                    <div class="p-4 bg-slate-50 rounded-lg">
+                        <h4 class="font-semibold text-indigo-600">${item.title}</h4>
+                        <p class="text-slate-600 text-sm">${item.description}</p>
+                    </div>
+                `).join('');
+            }
+            
+            function renderWorkloadComparison(metric) {
+                const metricTitles = {
+                    identity: 'Pod Identity',
+                    storage: 'Persistent Storage',
+                    usecase: 'Primary Use Case'
+                };
+
+                let content = `<div class="w-full fade-in">
+                    <h4 class="text-lg font-semibold text-center mb-4 text-slate-800">${metricTitles[metric]}</h4>
+                    <div class="comparison-grid">`;
+                
+                workloadDetailsData.forEach(item => {
+                    const value = item[metric];
+                    content += `
+                        <div class="text-center p-3 bg-white rounded-lg shadow-sm">
+                            <h5 class="font-bold text-slate-700">${item.id}</h5>`;
+                    if (typeof value === 'object') {
+                        content += `<p class="text-3xl mt-2">${value.icon}</p>
+                                    <p class="text-sm text-slate-600 mt-1">${value.text}</p>`;
+                    } else {
+                        content += `<p class="text-sm text-slate-600 mt-2 px-2">${value}</p>`;
+                    }
+                    content += `</div>`;
+                });
+                
+                content += `</div></div>`;
+                workloadComparisonContainer.innerHTML = content;
+            }
+
+            document.querySelectorAll('#workload-controls button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const metric = this.dataset.metric;
+                    renderWorkloadComparison(metric);
+                    document.querySelectorAll('#workload-controls button').forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            renderWorkloadComparison('identity');
+            renderWorkloadDetails();
+
+            const useCasesGrid = document.getElementById('use-cases-grid');
+            
+            function renderUseCases(filter = 'all') {
+                const filteredData = filter === 'all' 
+                    ? useCasesData 
+                    : useCasesData.filter(uc => uc.category === filter);
+                
+                useCasesGrid.innerHTML = filteredData.map(uc => `
+                    <div class="card bg-white p-6 rounded-lg shadow-md fade-in">
+                        <h3 class="font-semibold text-lg text-indigo-600 mb-2">${uc.title}</h3>
+                        <p class="text-slate-600">${uc.description}</p>
+                    </div>
+                `).join('');
+            }
+            
+            document.querySelectorAll('.use-case-filter').forEach(button => {
+                button.addEventListener('click', function() {
+                    const filter = this.dataset.filter;
+                    renderUseCases(filter);
+                    document.querySelectorAll('.use-case-filter').forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            renderUseCases();
+        });
+    </script>
+</body>
+</html>

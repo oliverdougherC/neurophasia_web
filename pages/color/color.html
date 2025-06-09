@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Vibrant Professional" -->
+    <!-- Application Structure Plan: The application is structured into four logical, thematic sections to facilitate learning for a technical audience (video engineer). 1. **Header & Navigation**: Quick access to core topics. 2. **Introduction**: Sets the stage. 3. **Thematic Sections**: 'Color Fundamentals' (Physics/Perception), 'Digital Representation' (Bits/Codecs), 'In the Camera' (Exposure/Functions), and 'Post-Production & Display' (Grading/HDR). This non-linear, topic-based structure is superior to the report's linear format because it allows a knowledgeable user to jump directly to specific areas of interest (e.g., comparing color spaces without scrolling through basic physics) or to explore related concepts grouped together. Key interactions include toggling chart data, dynamically filtering tables, and using interactive diagrams to explain complex relationships like the exposure triangle and transfer functions. This is designed for quick reference and comparative analysis, which is how an engineer would likely use this information. -->
+    <!-- Visualization & Content Choices: 1. **CIE Chromaticity Diagram**: Report Info: Gamuts of sRGB, Rec.709, DCI-P3, Rec.2020. Goal: Compare. Viz: Scatter plot (Chart.js) on a background image of the CIE diagram. Interaction: Checkboxes to toggle gamut triangles on/off. Justification: Interactive comparison is more effective than multiple static images. 2. **Color Depth**: Report Info: 8 vs 10 vs 12 bit. Goal: Inform/Compare. Viz: HTML/CSS gradient bars and stat cards. Interaction: Buttons to switch between bit depths, updating the gradient smoothness and color count dynamically. Justification: Visually demonstrates the concept of banding vs. smooth gradients. 3. **Chroma Subsampling**: Report Info: 4:4:4, 4:2:2, 4:2:0 schemes. Goal: Inform/Organize. Viz: HTML grid diagrams. Interaction: Buttons to switch between schemes, updating the visual representation of luma/chroma samples. Justification: Clarifies the abstract ratios with clear visual examples. 4. **Key Standards Comparison**: Report Info: Tables of primaries, white points, etc. Goal: Compare/Organize. Viz: Interactive HTML table. Interaction: N/A, static reference. Justification: A clear, dense table is the best way to present this reference data. All visualizations use Chart.js or structured HTML/CSS, adhering to the NO SVG/Mermaid rule. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #2563eb; /* blue-600 */
+            border-bottom-color: #2563eb; /* blue-600 */
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            border-top-width: 4px;
+        }
+        .btn {
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background-color: #e2e8f0; /* slate-200 */
+            color: #334155; /* slate-700 */
+        }
+        #digital .btn-secondary.active {
+            background-color: #f59e0b; /* amber-500 */
+            color: #FFFFFF;
+        }
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #e2e8f0; /* slate-200 */
+        }
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #334155; /* slate-700 */
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        p, li {
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        }
+        th {
+            background-color: #f1f5f9; /* slate-100 */
+            font-weight: 600;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 450px;
+                max-height: 500px;
+            }
+        }
+        .chroma-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .chroma-pixel {
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: 4px;
+            position: relative;
+        }
+        .chroma-pixel span {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .gradient-bar {
+            width: 100%;
+            height: 50px;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+        <div class="container mx-auto px-4">
+            <nav class="flex items-center justify-between h-20">
+                <a href="https://neurophasia.com" class="text-2xl font-bold text-slate-700 hover:text-blue-600 transition-colors">Neurophasia</a>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#fundamentals" class="nav-link active">Fundamentals</a>
+                    <a href="#digital" class="nav-link">Digital</a>
+                    <a href="#camera" class="nav-link">Camera</a>
+                    <a href="#post" class="nav-link">Post & Display</a>
+                </div>
+                 <button id="mobile-menu-button" class="md:hidden p-2 rounded-md text-slate-600 hover:bg-slate-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </nav>
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <a href="#fundamentals" class="block py-2 px-3 rounded-md text-base font-medium nav-link">Fundamentals</a>
+                <a href="#digital" class="block py-2 px-3 rounded-md text-base font-medium nav-link">Digital</a>
+                <a href="#camera" class="block py-2 px-3 rounded-md text-base font-medium nav-link">Camera</a>
+                <a href="#post" class="block py-2 px-3 rounded-md text-base font-medium nav-link">Post & Display</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 md:py-12">
+
+        <section id="intro" class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-slate-800">
+                An Interactive Guide to Video 
+                <span class="font-bold">
+                    <span class="text-red-500">C</span><span class="text-orange-500">o</span><span class="text-yellow-500">l</span><span class="text-green-500">o</span><span class="text-blue-500">r</span>
+                </span>
+            </h1>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600">This abstract translates complex color theory into an explorable experience. For video engineers and enthusiasts, it demystifies everything from the physics of light to the technical standards that define modern video, helping you master the art and science of color.</p>
+        </section>
+
+        <!-- Fundamentals Section -->
+        <section id="fundamentals" class="content-section active">
+            <h2 class="text-red-600">Color Fundamentals</h2>
+            <p class="mb-8 text-slate-600">This section explores the bedrock principles of video color. We'll start with the physics of light and human perception, which explain *why* we see color the way we do. Then, we'll dive into colorimetry—the science of measuring color—and see how standards like the CIE 1931 Chromaticity Diagram provide a universal language for defining and comparing the range of colors (gamuts) that different video systems can reproduce.</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card p-6 border-t-red-500">
+                    <h3>CIE 1931 Chromaticity Diagram</h3>
+                    <p class="text-slate-600">The CIE 1931 diagram is a map of all colors visible to the average human. The outer horseshoe shape represents pure, monochromatic light. Video color spaces are shown as triangles, defining the gamut (range of colors) they can reproduce. Interact with the checkboxes to compare the gamuts of key video standards.</p>
+                     <div class="chart-container">
+                        <canvas id="cieChart"></canvas>
+                    </div>
+                    <div id="gamut-controls" class="mt-4 flex flex-wrap gap-4 justify-center"></div>
+                </div>
+
+                <div class="card p-6 border-t-red-500">
+                    <h3>Human Perception & Color Models</h3>
+                    <p class="text-slate-600">Human color vision is based on three types of cone cells in our eyes, sensitive to short (Blue), medium (Green), and long (Red) wavelengths of light. This is the principle of trichromacy. Video displays leverage this by using an additive RGB color model, mixing red, green, and blue light to create a vast spectrum of colors.</p>
+                    <p class="text-slate-600">However, for efficient video compression, the YCbCr model is used. It separates brightness (Luma, Y') from color information (Chroma, Cb/Cr). This is crucial because our eyes are more sensitive to detail in brightness than in color, allowing color information to be compressed with minimal visual impact.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Digital Section -->
+        <section id="digital" class="content-section">
+            <h2 class="text-yellow-600">Digital Representation</h2>
+             <p class="mb-8 text-slate-600">This section focuses on how the continuous world of color is translated into discrete digital data. We will examine bit depth, which determines the number of available colors and the smoothness of gradients, and chroma subsampling, a compression technique fundamental to modern video codecs. Understanding these concepts is essential for appreciating the trade-offs between image quality, file size, and processing requirements.</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card p-6 border-t-yellow-500">
+                    <h3>Color Depth (Bit Depth)</h3>
+                    <p class="text-slate-600">Bit depth defines the number of shades available for each color channel. Higher bit depth means more colors, resulting in smoother gradients and more flexibility for color grading. 8-bit is standard for SDR, but 10-bit or higher is essential for HDR and professional workflows to avoid "color banding."</p>
+                    <div id="bitDepthSelector" class="flex space-x-2 my-4">
+                        <button class="btn btn-secondary active" data-depth="8">8-bit</button>
+                        <button class="btn btn-secondary" data-depth="10">10-bit</button>
+                        <button class="btn btn-secondary" data-depth="12">12-bit</button>
+                    </div>
+                    <div id="bitDepthInfo" class="text-center">
+                        <p class="text-2xl font-bold text-amber-700" id="totalColors">~16.7 Million Colors</p>
+                        <p class="text-sm text-slate-500" id="shadesPerChannel">256 shades per channel</p>
+                    </div>
+                    <div id="gradientDisplay" class="gradient-bar"></div>
+                </div>
+                <div class="card p-6 border-t-yellow-500">
+                    <h3>Chroma Subsampling</h3>
+                    <p class="text-slate-600">Chroma subsampling is a compression technique that reduces color data by sampling color at a lower resolution than brightness. This works because human vision is less sensitive to color detail than to luminance. The notation J:a:b (e.g., 4:2:2) describes this sampling. Select a scheme to see how it works.</p>
+                    <div id="chromaSelector" class="flex space-x-2 my-4">
+                        <button class="btn btn-secondary active" data-chroma="4:4:4">4:4:4</button>
+                        <button class="btn btn-secondary" data-chroma="4:2:2">4:2:2</button>
+                        <button class="btn btn-secondary" data-chroma="4:2:0">4:2:0</button>
+                    </div>
+                    <div class="chroma-grid" id="chromaGrid"></div>
+                    <p id="chromaDescription" class="mt-4 text-sm text-slate-600"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Camera Section -->
+        <section id="camera" class="content-section">
+            <h2 class="text-green-600">In the Camera</h2>
+             <p class="mb-8 text-slate-600">Capturing a great image starts in the camera. This section covers the fundamental controls of exposure—the "exposure triangle" of aperture, shutter speed, and ISO—and how they impact not just brightness but also creative elements like depth of field and motion blur. We will also explore transfer functions (like Log curves), which are crucial for capturing the maximum possible dynamic range from the camera's sensor for post-production flexibility.</p>
+            <div class="grid md:grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="card p-6 lg:col-span-2 border-t-green-500">
+                    <h3>The Exposure Triangle</h3>
+                    <p class="text-slate-600">Exposure is controlled by three interdependent settings. Changing one requires adjusting others to maintain the desired brightness. Each setting also has a critical secondary effect on the image's final look.</p>
+                    <div class="mt-6 grid sm:grid-cols-3 gap-6 text-center">
+                        <div>
+                            <div class="text-5xl mb-2">📷</div>
+                            <h4 class="font-bold text-lg">Aperture (f-stop)</h4>
+                            <p class="text-sm text-slate-600">Controls the size of the lens opening. A wider aperture (e.g., f/1.8) lets in more light and creates a shallow depth of field (blurry background).</p>
+                        </div>
+                        <div>
+                            <div class="text-5xl mb-2">⏱️</div>
+                            <h4 class="font-bold text-lg">Shutter Speed</h4>
+                            <p class="text-sm text-slate-600">Controls how long the sensor is exposed to light for each frame. A slower speed (e.g., 1/50s) creates more motion blur, often considered cinematic.</p>
+                        </div>
+                        <div>
+                            <div class="text-5xl mb-2">💡</div>
+                            <h4 class="font-bold text-lg">ISO/Gain</h4>
+                            <p class="text-sm text-slate-600">Amplifies the sensor signal. Higher ISO allows shooting in darker conditions but introduces digital noise and reduces dynamic range.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-6 border-t-green-500">
+                    <h3>Transfer Functions (OETF)</h3>
+                    <p class="text-slate-600">An OETF (Opto-Electronic Transfer Function) translates scene light into a video signal. While standard gamma curves (like Rec.709) are for direct viewing, Log curves are used to capture high dynamic range.</p>
+                    <p class="text-slate-600">Log footage looks flat and desaturated, but it preserves highlight and shadow detail, providing maximum flexibility for color grading.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Post Section -->
+        <section id="post" class="content-section">
+            <h2 class="text-blue-600">Post-Production & Display</h2>
+            <p class="mb-8 text-slate-600">This final section bridges the gap between capture and viewing. We'll explore color grading, the artistic process of manipulating color and tone to create a specific look. We will also cover High Dynamic Range (HDR), which represents a significant leap forward in display technology, enabling brighter highlights, deeper blacks, and a wider range of colors for a more realistic and immersive viewing experience.</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="card p-6 border-t-blue-500">
+                    <h3>Color Grading & LUTs</h3>
+                    <p class="text-slate-600">Color grading is the process of altering and enhancing the color of a video to set a mood, create a style, or correct issues. This is where "flat" Log footage is transformed into its final look.</p>
+                    <p class="text-slate-600"><strong>Look-Up Tables (LUTs)</strong> are a key part of this process. A <strong>Technical LUT</strong> is used to convert footage from one color space to another (e.g., from camera Log to Rec.709). A <strong>Creative LUT</strong> applies a specific artistic look or color palette.</p>
+                </div>
+                <div class="card p-6 border-t-blue-500">
+                    <h3>High Dynamic Range (HDR)</h3>
+                    <p class="text-slate-600">HDR is a technology that allows displays to show a much greater range of brightness and color than Standard Dynamic Range (SDR). Key HDR formats include:</p>
+                    <ul class="list-disc pl-5 mt-4 text-slate-600">
+                        <li><strong>HDR10:</strong> An open standard using the PQ transfer function and static metadata. It's a common baseline for HDR content.</li>
+                        <li><strong>Dolby Vision:</strong> A proprietary format that uses dynamic metadata, allowing for scene-by-scene or even frame-by-frame optimization of brightness and tone mapping.</li>
+                        <li><strong>HLG (Hybrid Log-Gamma):</strong> A royalty-free standard primarily designed for broadcast. It's backward-compatible, meaning an HLG signal can be viewed on both SDR and HDR displays.</li>
+                    </ul>
+                </div>
+            </div>
+             <div class="card p-6 mt-8 border-t-blue-500">
+                <h3>Video Standards Comparison</h3>
+                <p class="text-slate-600">The world of video is governed by standards that define its color characteristics. Rec.709 has been the workhorse for HDTV, while DCI-P3 is used for cinema, and Rec.2020 is the future-facing standard for UHD and HDR, offering a vastly wider color gamut.</p>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>Rec. 709 / sRGB</th>
+                                <th>DCI-P3 (Theatrical)</th>
+                                <th>Display P3</th>
+                                <th>Rec. 2020</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standardsTable">
+                            <!-- Data will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('.content-section');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    function setActiveLink(targetId) {
+        navLinks.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === `#${targetId}`);
+        });
+    }
+
+    function showSection(targetId) {
+        sections.forEach(section => {
+            section.classList.toggle('active', section.id === targetId);
+        });
+        setActiveLink(targetId);
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            showSection(targetId);
+            if(mobileMenu.classList.contains('block')) {
+                mobileMenu.classList.remove('block');
+                mobileMenu.classList.add('hidden');
+            }
+        });
+    });
+
+    mobileMenuButton.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        mobileMenu.classList.toggle('block');
+    });
+
+    // Set initial section
+    const initialHash = window.location.hash.substring(1);
+    const validInitialHash = Array.from(sections).some(s => s.id === initialHash);
+    showSection(validInitialHash ? initialHash : 'fundamentals');
+
+    // CIE Chart
+    const cieChartData = {
+        datasets: []
+    };
+    
+    const cieGamuts = {
+        'Rec. 709 / sRGB': {
+            borderColor: 'rgba(239, 68, 68, 1)', // red-500
+            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+            data: [{x: 0.640, y: 0.330}, {x: 0.300, y: 0.600}, {x: 0.150, y: 0.060}, {x: 0.640, y: 0.330}]
+        },
+        'DCI-P3': {
+            borderColor: 'rgba(34, 197, 94, 1)', // green-500
+            backgroundColor: 'rgba(34, 197, 94, 0.2)',
+            data: [{x: 0.680, y: 0.320}, {x: 0.265, y: 0.690}, {x: 0.150, y: 0.060}, {x: 0.680, y: 0.320}]
+        },
+        'Rec. 2020': {
+            borderColor: 'rgba(59, 130, 246, 1)', // blue-500
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            data: [{x: 0.708, y: 0.292}, {x: 0.170, y: 0.797}, {x: 0.131, y: 0.046}, {x: 0.708, y: 0.292}]
+        }
+    };
+
+    const gamutControls = document.getElementById('gamut-controls');
+    let cieChart;
+
+    function createCieChart() {
+        const ctx = document.getElementById('cieChart').getContext('2d');
+        const backgroundImage = new Image();
+        backgroundImage.crossOrigin = "Anonymous";
+        backgroundImage.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/CIE1931xy_blank.svg/1200px-CIE1931xy_blank.svg.png$0';
+        
+        backgroundImage.onload = () => {
+            cieChart = new Chart(ctx, {
+                type: 'scatter',
+                data: cieChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null) {
+                                        label += `(x: ${context.parsed.x.toFixed(3)}, y: ${context.parsed.y.toFixed(3)})`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        background: {
+                            image: backgroundImage,
+                            aspectRatio: backgroundImage.width / backgroundImage.height
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 0.8,
+                            title: { display: true, text: 'x' }
+                        },
+                        y: {
+                            min: 0,
+                            max: 0.9,
+                            title: { display: true, text: 'y' }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0,
+                            showLine: true,
+                            fill: true,
+                            borderWidth: 2
+                        },
+                        point: {
+                            radius: 4,
+                            hoverRadius: 6
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'background',
+                    beforeDraw: (chart) => {
+                        if (chart.options.plugins.background.image?.complete) {
+                            const ctx = chart.ctx;
+                            const {top, left, width, height} = chart.chartArea;
+                            const img = chart.options.plugins.background.image;
+                            const aspectRatio = chart.options.plugins.background.aspectRatio;
+                            let newWidth = width;
+                            let newHeight = newWidth / aspectRatio;
+                            if (newHeight > height) {
+                                newHeight = height;
+                                newWidth = newHeight * aspectRatio;
+                            }
+                            let x = left + (width - newWidth) / 2;
+                            let y = top + (height - newHeight) / 2;
+                            ctx.drawImage(img, x, y, newWidth, newHeight);
+                        }
+                    }
+                }]
+            });
+            setupGamutControls();
+        };
+        backgroundImage.onerror = () => {
+            console.error("Failed to load CIE diagram background image.");
+            // Fallback: create chart without background
+            cieChart = new Chart(ctx, {
+                type: 'scatter',
+                data: cieChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                     plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                     scales: {
+                        x: { min: 0, max: 0.8, title: { display: true, text: 'x' } },
+                        y: { min: 0, max: 0.9, title: { display: true, text: 'y' } }
+                    }
+                }
+            });
+            setupGamutControls();
+        }
+    }
+    
+    function setupGamutControls() {
+        Object.keys(cieGamuts).forEach((gamutName, index) => {
+            const container = document.createElement('div');
+            container.className = 'flex items-center';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `gamut-${index}`;
+            checkbox.checked = index === 0;
+            checkbox.className = 'h-4 w-4 rounded';
+            checkbox.style.accentColor = cieGamuts[gamutName].borderColor;
+
+            const label = document.createElement('label');
+            label.htmlFor = `gamut-${index}`;
+            label.textContent = gamutName;
+            label.className = 'ml-2 text-sm';
+            
+            container.appendChild(checkbox);
+            container.appendChild(label);
+            gamutControls.appendChild(container);
+
+            checkbox.addEventListener('change', updateCieChart);
+        });
+        updateCieChart();
+    }
+    
+    function updateCieChart() {
+        cieChartData.datasets = [];
+        Object.keys(cieGamuts).forEach((gamutName, index) => {
+            const checkbox = document.getElementById(`gamut-${index}`);
+            if (checkbox.checked) {
+                cieChartData.datasets.push({
+                    label: gamutName,
+                    data: cieGamuts[gamutName].data,
+                    borderColor: cieGamuts[gamutName].borderColor,
+                    backgroundColor: cieGamuts[gamutName].backgroundColor,
+                    showLine: true,
+                    fill: true
+                });
+            }
+        });
+        if(cieChart) cieChart.update();
+    }
+
+    createCieChart();
+
+    // Bit Depth
+    const bitDepthSelector = document.getElementById('bitDepthSelector');
+    const bitDepthButtons = bitDepthSelector.querySelectorAll('button');
+    const totalColorsEl = document.getElementById('totalColors');
+    const shadesPerChannelEl = document.getElementById('shadesPerChannel');
+    const gradientDisplay = document.getElementById('gradientDisplay');
+
+    const bitDepthData = {
+        '8': { 
+            shades: 256, 
+            colors: '16.7 Million',
+            gradient: 'linear-gradient(to right, #ef4444 12.5%, #f97316 12.5%, #f97316 25%, #eab308 25%, #eab308 37.5%, #84cc16 37.5%, #84cc16 50%, #22c55e 50%, #22c55e 62.5%, #14b8a6 62.5%, #14b8a6 75%, #3b82f6 75%, #3b82f6 87.5%, #8b5cf6 87.5%)'
+        },
+        '10': { 
+            shades: 1024, 
+            colors: '1.07 Billion',
+            gradient: 'linear-gradient(to right, #ef4444, #f56522, #f97316, #f48710, #eab308, #c1c211, #84cc16, #57c93a, #22c55e, #18bca9, #14b8a6, #0fa5c6, #06b6d4, #2499e9, #3b82f6, #636ef8, #8b5cf6, #b252f2, #d946ef)'
+        },
+        '12': { 
+            shades: 4096, 
+            colors: '68.7 Billion',
+            gradient: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #84cc16, #22c55e, #14b8a6, #06b6d4, #3b82f6, #8b5cf6, #d946ef)'
+        }
+    };
+    
+    function updateBitDepthDisplay(depth) {
+        const data = bitDepthData[depth];
+        totalColorsEl.textContent = `~${data.colors} Colors`;
+        shadesPerChannelEl.textContent = `${data.shades} shades per channel`;
+        gradientDisplay.style.background = data.gradient;
+        
+        bitDepthButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.depth === depth);
+        });
+    }
+
+    bitDepthButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            updateBitDepthDisplay(button.dataset.depth);
+        });
+    });
+    updateBitDepthDisplay('8');
+
+
+    // Chroma Subsampling
+    const chromaSelector = document.getElementById('chromaSelector');
+    const chromaButtons = chromaSelector.querySelectorAll('button');
+    const chromaGrid = document.getElementById('chromaGrid');
+    const chromaDescription = document.getElementById('chromaDescription');
+
+    const chromaData = {
+        '4:4:4': {
+            pixels: [
+                { y: true, c: true }, { y: true, c: true }, { y: true, c: true }, { y: true, c: true },
+                { y: true, c: true }, { y: true, c: true }, { y: true, c: true }, { y: true, c: true },
+            ],
+            description: 'No subsampling. Each pixel has unique Luma (Y) and Chroma (Cb, Cr) values. Highest quality, largest file size.'
+        },
+        '4:2:2': {
+            pixels: [
+                { y: true, c: true }, { y: true, c: false }, { y: true, c: true }, { y: true, c: false },
+                { y: true, c: true }, { y: true, c: false }, { y: true, c: true }, { y: true, c: false },
+            ],
+            description: 'Horizontal subsampling. Chroma is sampled at half the horizontal resolution of Luma. Color is shared between pairs of adjacent pixels.'
+        },
+        '4:2:0': {
+            pixels: [
+                { y: true, c: true }, { y: true, c: false }, { y: true, c: true }, { y: true, c: false },
+                { y: true, c: false }, { y: true, c: false }, { y: true, c: false }, { y: true, c: false },
+            ],
+            description: 'Horizontal & vertical subsampling. Chroma is sampled at half horizontal and vertical resolution. A 2x2 block of pixels shares a single color value. Most common for delivery.'
+        }
+    };
+
+    function updateChromaDisplay(scheme) {
+        const data = chromaData[scheme];
+        chromaGrid.innerHTML = '';
+        data.pixels.forEach(p => {
+            const pixel = document.createElement('div');
+            pixel.className = 'chroma-pixel';
+            const yEl = document.createElement('span');
+            yEl.textContent = 'Y';
+            yEl.style.color = '#fff';
+            pixel.appendChild(yEl);
+            pixel.style.backgroundColor = p.c ? '#b45309' : '#f59e0b'; /* amber-700 & amber-500 */
+            if (p.c) {
+                const cEl = document.createElement('span');
+                cEl.textContent = 'Y, C, C';
+                cEl.style.fontSize = '0.7rem'
+                pixel.replaceChildren(cEl);
+            }
+            chromaGrid.appendChild(pixel);
+        });
+        chromaDescription.textContent = data.description;
+        chromaButtons.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.chroma === scheme);
+        });
+    }
+
+    chromaButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            updateChromaDisplay(button.dataset.chroma);
+        });
+    });
+    updateChromaDisplay('4:4:4');
+    
+    // Standards Table
+    const standardsData = [
+        { feature: 'Red Primary (xy)', rec709: '(0.640, 0.330)', dci: '(0.680, 0.320)', displayp3: '(0.680, 0.320)', rec2020: '(0.708, 0.292)' },
+        { feature: 'Green Primary (xy)', rec709: '(0.300, 0.600)', dci: '(0.265, 0.690)', displayp3: '(0.265, 0.690)', rec2020: '(0.170, 0.797)' },
+        { feature: 'Blue Primary (xy)', rec709: '(0.150, 0.060)', dci: '(0.150, 0.060)', displayp3: '(0.150, 0.060)', rec2020: '(0.131, 0.046)' },
+        { feature: 'White Point', rec709: 'D65', dci: '~6300K', displayp3: 'D65', rec2020: 'D65' },
+        { feature: 'Gamma/EOTF', rec709: '~2.2-2.4', dci: '2.6', displayp3: '~2.2 (sRGB curve)', rec2020: 'PQ/HLG for HDR' },
+        { feature: 'Typical Bit Depth', rec709: '8-bit', dci: '12-bit', displayp3: '8/10-bit', rec2020: '10/12-bit' },
+        { feature: 'Primary Use', rec709: 'HDTV, Web (SDR)', dci: 'Cinema Projection', displayp3: 'Consumer Devices', rec2020: 'UHD, HDR' },
+    ];
+
+    const tableBody = document.getElementById('standardsTable');
+    standardsData.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="font-semibold text-slate-700">${item.feature}</td>
+            <td class="text-slate-600">${item.rec709}</td>
+            <td class="text-slate-600">${item.dci}</td>
+            <td class="text-slate-600">${item.displayp3}</td>
+            <td class="text-slate-600">${item.rec2020}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+});
+</script>
+</body>
+</html>

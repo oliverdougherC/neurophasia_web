@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AV1 - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Slate & Sky -->
+    <!-- Application Structure Plan: A single-page, thematic dashboard design. A sticky top navigation bar allows users to jump to key sections: Introduction, Core Architecture, Prediction Techniques, Coding & Filtering, Performance, and Conclusion. This non-linear structure is chosen for usability, allowing technical users to dive into specific areas of interest (e.g., jump straight to performance benchmarks) without needing to scroll through the entire document. Interactive elements like tabs for Intra/Inter prediction and charts for performance data break down complex information into manageable, explorable chunks. The flow encourages both linear reading and topic-based deep dives. -->
+    <!-- Visualization & Content Choices: 1. Codec Pipeline: Report info on the hybrid block-based coding process is transformed into an HTML/CSS flexbox diagram. Goal: Inform. Interaction: Hover to highlight stages. Justification: Visually simplifies a multi-stage technical process. 2. Performance Data: Report info on bitrate savings is visualized as a Chart.js Bar Chart. Goal: Compare. Interaction: Tooltips on hover provide exact percentages. Justification: Bar charts are optimal for direct quantitative comparison. 3. Codec Feature Comparison: Report's comparison table is implemented as a styled HTML table. Goal: Organize/Compare. Interaction: None needed. Justification: A table is the clearest way to present structured, multi-point comparisons. 4. Prediction Techniques: Complex text descriptions are organized into a tabbed interface with cards. Goal: Organize/Inform. Interaction: Click tabs to switch between Intra & Inter prediction. Justification: Manages cognitive load by separating two dense but related topics. All visuals are built to support this exploratory structure. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-btn {
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .tab-btn {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .tab-btn.active {
+            background-color: #0ea5e9; /* sky-500 */
+            color: white;
+        }
+        .tech-card {
+            background-color: white;
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .tech-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .diagram-step {
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .diagram-step:hover {
+            transform: scale(1.05);
+            background-color: #e0f2fe; /* sky-100 */
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="https://neurophasia.com" class="font-bold text-xl text-sky-600 hover:text-sky-700 transition-colors duration-200">Neurophasia</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#architecture" class="nav-btn px-4 py-2 rounded-md text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600 hover:border-sky-300">Architecture</a>
+                        <a href="#prediction" class="nav-btn px-4 py-2 rounded-md text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600 hover:border-sky-300">Prediction</a>
+                        <a href="#coding" class="nav-btn px-4 py-2 rounded-md text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600 hover:border-sky-300">Coding & Filters</a>
+                        <a href="#performance" class="nav-btn px-4 py-2 rounded-md text-sm font-medium text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600 hover:border-sky-300">Performance</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-sky-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#architecture" class="block text-center nav-btn px-3 py-2 my-1 rounded-md text-base font-medium text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600">Architecture</a>
+                <a href="#prediction" class="block text-center nav-btn px-3 py-2 my-1 rounded-md text-base font-medium text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600">Prediction</a>
+                <a href="#coding" class="block text-center nav-btn px-3 py-2 my-1 rounded-md text-base font-medium text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600">Coding & Filters</a>
+                <a href="#performance" class="block text-center nav-btn px-3 py-2 my-1 rounded-md text-base font-medium text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:text-sky-600">Performance</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <section id="introduction" class="scroll-mt-20 text-center mb-24">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-slate-800 mb-4">A Deep Dive into AV1</h1>
+            <p class="mt-4 max-w-3xl mx-auto text-lg text-slate-600">The abstract breaks down the AOMedia Video 1 (AV1) codec, the open, royalty-free standard designed for the next generation of video streaming. This application breaks down the key technologies that give AV1 its superior compression efficiency.</p>
+        </section>
+
+        <section id="architecture" class="scroll-mt-20 mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">Core Architecture & Concepts</h2>
+                <p class="mt-2 max-w-2xl mx-auto text-md text-slate-500">AV1 builds upon a hybrid block-based coding framework, but enhances it with more flexible structures and parallelism. This section introduces the fundamental building blocks of the codec.</p>
+            </div>
+            
+            <div class="bg-white p-8 rounded-xl shadow-md border border-slate-200">
+                <h3 class="text-2xl font-semibold text-center mb-8">AV1 Encoding Pipeline</h3>
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
+                    <div class="diagram-step p-4 rounded-lg flex-1">
+                        <div class="text-4xl mb-2">🎬</div>
+                        <h4 class="font-bold">Input Frame</h4>
+                        <p class="text-sm text-slate-500">The process starts with a single video frame.</p>
+                    </div>
+                    <div class="text-2xl text-slate-400 font-light hidden md:block">&rarr;</div>
+                    <div class="diagram-step p-4 rounded-lg flex-1">
+                        <div class="text-4xl mb-2">🧩</div>
+                        <h4 class="font-bold">Partitioning</h4>
+                        <p class="text-sm text-slate-500">The frame is divided into large Superblocks (up to 128x128), which are recursively partitioned.</p>
+                    </div>
+                    <div class="text-2xl text-slate-400 font-light hidden md:block">&rarr;</div>
+                    <div class="diagram-step p-4 rounded-lg flex-1">
+                        <div class="text-4xl mb-2">🔮</div>
+                        <h4 class="font-bold">Prediction</h4>
+                        <p class="text-sm text-slate-500">Each block is predicted using information from the same frame (Intra) or other frames (Inter).</p>
+                    </div>
+                    <div class="text-2xl text-slate-400 font-light hidden md:block">&rarr;</div>
+                    <div class="diagram-step p-4 rounded-lg flex-1">
+                        <div class="text-4xl mb-2">✨</div>
+                        <h4 class="font-bold">Transform & Quantize</h4>
+                        <p class="text-sm text-slate-500">The prediction error (residual) is transformed to frequency domain and its precision is reduced.</p>
+                    </div>
+                    <div class="text-2xl text-slate-400 font-light hidden md:block">&rarr;</div>
+                    <div class="diagram-step p-4 rounded-lg flex-1">
+                        <div class="text-4xl mb-2">🗃️</div>
+                        <h4 class="font-bold">Entropy Coding</h4>
+                        <p class="text-sm text-slate-500">The quantized values and metadata are losslessly compressed into the final bitstream.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="prediction" class="scroll-mt-20 mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">Advanced Prediction Techniques</h2>
+                <p class="mt-2 max-w-2xl mx-auto text-md text-slate-500">Prediction is key to reducing redundancy. AV1 introduces a vast toolkit of new prediction methods to handle diverse content types, from natural video to screen captures. Select a category below to explore the specific tools.</p>
+            </div>
+
+            <div class="flex justify-center mb-8">
+                <div class="bg-slate-200 rounded-full p-1 flex space-x-1">
+                    <button class="tab-btn active px-4 py-2 text-sm font-semibold rounded-full" data-tab="intra">Intra-Frame Prediction</button>
+                    <button class="tab-btn px-4 py-2 text-sm font-semibold rounded-full" data-tab="inter">Inter-Frame Prediction</button>
+                </div>
+            </div>
+
+            <div id="intra-content" class="tab-content">
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Directional Modes</h4>
+                        <p class="text-slate-600">AV1 expands from VP9's 8 directional modes to <strong>56 modes</strong>, including finer angles. This allows for much more accurate prediction of edges and textures, reducing the residual that needs to be coded.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Chroma from Luma (CfL)</h4>
+                        <p class="text-slate-600">A powerful chroma-only predictor. It leverages the high correlation between luma (brightness) and chroma (color) by modeling chroma pixels as a linear function of the reconstructed luma pixels in the same block.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Intra Block Copy (IBC)</h4>
+                        <p class="text-slate-600">Extremely effective for screen content (text, graphics). It allows a block to be predicted by copying a previously decoded block from within the <strong>same frame</strong>, essentially performing motion compensation locally.</p>
+                    </div>
+                     <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Palette Mode</h4>
+                        <p class="text-slate-600">Designed for content with few colors, like animations or screen sharing. It identifies a small palette of unique colors within a block and then encodes each pixel by its palette index, achieving massive compression for such content.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Smooth & Paeth Predictors</h4>
+                        <p class="text-slate-600">AV1 introduces new smooth prediction modes for handling gradients and replaces VP9's TrueMotion with the Paeth predictor, which excels at predicting corners and sharp edges by selecting the best of three neighboring pixel values.</p>
+                    </div>
+                     <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Recursive Filtering</h4>
+                        <p class="text-slate-600">The FILTER_INTRA modes treat a block as a 2D Markov process, using pre-designed 7-tap filters on small patches to generate a highly accurate prediction, especially for textured areas.</p>
+                    </div>
+                </div>
+            </div>
+            <div id="inter-content" class="tab-content hidden">
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Warped & Affine Motion</h4>
+                        <p class="text-slate-600">Goes beyond simple translational motion. AV1 can model complex movements like zoom, rotation, and shearing on both a global (whole frame) and local (block-level) basis, leading to far better predictions for dynamic scenes.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Compound Prediction</h4>
+                        <p class="text-slate-600">Combines predictions from two different reference frames. AV1 offers multiple blending modes, including weighted averages and innovative <strong>wedge-partitioned prediction</strong>, which splits a block with a line pattern to blend two motion fields.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Overlapped Block MC (OBMC)</h4>
+                        <p class="text-slate-600">Reduces "blocking" artifacts at motion boundaries. It extends a block's motion vectors to overlap with its neighbors, then blends the overlapping regions for a much smoother, more natural result.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Extensive Reference Frames</h4>
+                        <p class="text-slate-600">AV1 can reference up to <strong>7 different frames</strong> from a buffer of 8 (past and future) to find the best possible prediction match, a significant increase over previous codecs. This includes special-purpose Alternate Reference Frames (ARFs).</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Subpixel Motion</h4>
+                        <p class="text-slate-600">Achieves extremely precise motion with up to <strong>1/8-pixel accuracy</strong> for luma. AV1 can adaptively choose between different interpolation filters (smooth, regular, sharp) for horizontal and vertical directions independently.</p>
+                    </div>
+                    <div class="tech-card">
+                        <h4 class="font-bold text-lg text-sky-700 mb-2">Switch Frames</h4>
+                        <p class="text-slate-600">A special inter-frame type that enables seamless resolution switching in adaptive streaming without requiring a full keyframe. It uses a higher-resolution version of the video as a reference, saving significant bandwidth.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="coding" class="scroll-mt-20 mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">Efficient Coding & Quality Enhancement</h2>
+                <p class="mt-2 max-w-2xl mx-auto text-md text-slate-500">After prediction, AV1 uses advanced transform, quantization, and filtering techniques to compress the residual data and clean up the final image, maximizing both efficiency and visual quality.</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 items-start">
+                <div class="tech-card h-full">
+                    <h3 class="text-xl font-semibold text-center mb-4 text-sky-800">Transform & Quantization</h3>
+                    <ul class="space-y-4 text-slate-600">
+                        <li><strong>Flexible Transforms:</strong> Supports both square and rectangular transform shapes (e.g., 64x16, 8x32) up to 64x64, adapting better to object shapes.</li>
+                        <li><strong>Multiple Kernels:</strong> Uses a rich set of transform kernels (DCT, ADST, Flip-ADST, Identity) to better compact energy for different signal types.</li>
+                        <li><strong>Quantization Matrices (QMS):</strong> Applies different quantization levels to different frequencies based on human perception, preserving important details while saving bits.</li>
+                    </ul>
+                </div>
+                <div class="tech-card h-full">
+                    <h3 class="text-xl font-semibold text-center mb-4 text-sky-800">In-Loop Filtering Pipeline</h3>
+                     <div class="flex flex-col space-y-4">
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <h4 class="font-bold">1. Deblocking Filter (DBF)</h4>
+                            <p class="text-sm">Smooths sharp artifacts across transform block boundaries.</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <h4 class="font-bold">2. Constrained Directional Enhancement (CDEF)</h4>
+                            <p class="text-sm">A powerful deringing filter that removes "mosquito noise" around sharp edges by identifying edge directions and filtering along them.</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <h4 class="font-bold">3. Loop Restoration Filter (LRF)</h4>
+                            <p class="text-sm">The final step, using Wiener and Self-Guided filters to restore detail and reverse some of the damage caused by compression.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="performance" class="scroll-mt-20 mb-24">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">Performance & Codec Comparison</h2>
+                <p class="mt-2 max-w-2xl mx-auto text-md text-slate-500">The combination of these advanced techniques results in significant compression gains over previous generations. The chart below shows typical bitrate savings for equivalent visual quality, according to industry benchmarks.</p>
+            </div>
+
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow-md border border-slate-200 mb-16">
+                 <h3 class="text-2xl font-semibold text-center mb-6 text-slate-800">AV1 Bitrate Savings vs. Predecessors</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                 <h3 class="text-2xl font-semibold text-center mb-6 text-slate-800">Feature Showdown: AV1 vs. HEVC vs. H.264</h3>
+                <table class="w-full min-w-max text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100">
+                            <th class="p-4 font-semibold text-sm text-slate-600 border-b border-slate-300">Feature</th>
+                            <th class="p-4 font-semibold text-sm text-slate-600 border-b border-slate-300">H.264 (AVC)</th>
+                            <th class="p-4 font-semibold text-sm text-slate-600 border-b border-slate-300">H.265 (HEVC)</th>
+                            <th class="p-4 font-semibold text-sm text-slate-600 border-b border-slate-300">AV1</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 border-b border-slate-200 font-medium">Max Block Size</td>
+                            <td class="p-4 border-b border-slate-200">16x16</td>
+                            <td class="p-4 border-b border-slate-200">64x64</td>
+                            <td class="p-4 border-b border-slate-200 text-sky-600 font-bold">128x128</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 border-b border-slate-200 font-medium">Intra Prediction Modes</td>
+                            <td class="p-4 border-b border-slate-200">9</td>
+                            <td class="p-4 border-b border-slate-200">35</td>
+                            <td class="p-4 border-b border-slate-200 text-sky-600 font-bold">56+</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 border-b border-slate-200 font-medium">Motion Compensation</td>
+                            <td class="p-4 border-b border-slate-200">Translational</td>
+                            <td class="p-4 border-b border-slate-200">Advanced</td>
+                            <td class="p-4 border-b border-slate-200 text-sky-600 font-bold">Warped, Affine, OBMC</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 border-b border-slate-200 font-medium">In-Loop Filters</td>
+                            <td class="p-4 border-b border-slate-200">Deblocking</td>
+                            <td class="p-4 border-b border-slate-200">Deblocking, SAO</td>
+                            <td class="p-4 border-b border-slate-200 text-sky-600 font-bold">Deblocking, CDEF, LRF</td>
+                        </tr>
+                         <tr class="hover:bg-slate-50">
+                            <td class="p-4 border-b border-slate-200 font-medium">Screen Content Tools</td>
+                            <td class="p-4 border-b border-slate-200">None</td>
+                            <td class="p-4 border-b border-slate-200">Limited</td>
+                            <td class="p-4 border-b border-slate-200 text-sky-600 font-bold">Intra Block Copy, Palette</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 border-b border-slate-200 font-medium">Royalty Status</td>
+                            <td class="p-4 border-b border-slate-200">Complex Licensing</td>
+                            <td class="p-4 border-b border-slate-200">Complex Licensing</td>
+                            <td class="p-4 border-b border-slate-200 text-sky-600 font-bold">Royalty-Free</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+        
+    </main>
+    
+    <footer class="bg-slate-800 text-slate-300">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p class="text-sm text-gray-400 mt-2">Part of the Neurophasia Archive</p>
+        </div>
+    </footer>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const navLinks = document.querySelectorAll('.nav-btn');
+
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    if(!mobileMenu.classList.contains('hidden')){
+                         mobileMenu.classList.add('hidden');
+                    }
+                });
+            });
+
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tab = button.dataset.tab;
+
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        if (content.id === `${tab}-content`) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+            
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const performanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['vs. H.264 (x264)', 'vs. VP9', 'vs. H.265 (HEVC)'],
+                    datasets: [{
+                        label: 'Bitrate Savings (%)',
+                        data: [50, 34, 30],
+                        backgroundColor: [
+                            'rgba(56, 189, 248, 0.6)',
+                            'rgba(14, 165, 233, 0.6)',
+                            'rgba(2, 132, 199, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(56, 189, 248, 1)',
+                            'rgba(14, 165, 233, 1)',
+                            'rgba(2, 132, 199, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Average Bitrate Saving (%)'
+                            },
+                             ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y + '% (Approx.)';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZFS - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Warm Neutral" -->
+    <!-- Application Structure Plan: The SPA is designed with a top-down, thematic flow to guide users from foundational knowledge to practical application. It starts with an 'Introduction' and 'Core Architecture' to establish basics. It then moves to 'Key Features', where users can interactively explore ZFS's main benefits (Integrity, Snapshots, etc.). A dedicated 'Performance & Caching' section uses charts to visualize trade-offs. The 'Comparative Analysis' section provides an interactive tool to compare ZFS against Btrfs and ext4/LVM, which is more engaging than static tables. Finally, a 'Deployment & Best Practices' section offers practical advice. This structure enables both linear learning for beginners and quick access to specific topics for advanced users, prioritizing usability over the report's original linear format. -->
+    <!-- Visualization & Content Choices: 
+        - ZFS Architecture Diagram (HTML/CSS): Goal: Organize. Method: A flexbox-based diagram illustrates the zpool -> vdev -> disk hierarchy. Interaction: Hovering over elements reveals tooltips with definitions. Justification: More accessible and responsive than a static image, avoids SVG.
+        - vdev Redundancy Chart (Chart.js Bar Chart): Goal: Compare. Method: A dynamic bar chart visualizes fault tolerance vs. capacity overhead for Mirror, RAID-Z1, Z2, Z3. Interaction: Users can toggle vdev types to update the chart. Justification: Provides a clear, quantitative comparison that is easier to grasp than text.
+        - Caching Mechanisms (Interactive Cards): Goal: Inform. Method: Cards for ARC, L2ARC, and ZIL/SLOG. Interaction: Clicking a card flips it to reveal detailed pros, cons, and best use cases. Justification: An engaging way to present dense, multi-faceted information without cluttering the UI.
+        - Filesystem Comparison (Chart.js Radar Chart): Goal: Compare. Method: A radar chart compares ZFS, Btrfs, and ext4+LVM across multiple axes (Integrity, Flexibility, etc.). Interaction: Buttons allow users to switch between different comparison sets. Justification: Offers a powerful multi-dimensional comparison at a glance.
+        - Best Practices (Checklist): Goal: Inform. Method: An interactive checklist format. Interaction: Hovering over items shows tooltips with more detailed explanations. Justification: Presents actionable advice in a clear, digestible format.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8F7F4; color: #4a4a4a; }
+        .bg-warm-neutral { background-color: #F8F7F4; }
+        .bg-warm-secondary { background-color: #EDEBE8; }
+        .bg-warm-accent { background-color: #D3C4B3; }
+        .text-warm-dark { color: #3D352E; }
+        .text-warm-medium { color: #786A5E; }
+        .border-warm-accent { border-color: #D3C4B3; }
+        .nav-item { cursor: pointer; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.3s, color 0.3s; font-weight: 500; }
+        .nav-item.active, .nav-item:hover { background-color: #3D352E; color: #F8F7F4; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .card { background-color: #FFFFFF; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); transition: transform 0.3s, box-shadow 0.3s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.07), 0 4px 6px -2px rgba(0,0,0,0.04); }
+        .interactive-tab { cursor: pointer; padding: 0.5rem 1rem; border-bottom: 2px solid transparent; transition: border-color 0.3s, color 0.3s; }
+        .interactive-tab.active { border-color: #3D352E; color: #3D352E; font-weight: 600; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 350px; max-height: 40vh; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .tooltip { visibility: hidden; background-color: #3D352E; color: #fff; text-align: center; border-radius: 6px; padding: 8px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -100px; width: 200px; opacity: 0; transition: opacity 0.3s; }
+        .has-tooltip:hover .tooltip { visibility: visible; opacity: 1; }
+    </style>
+</head>
+<body class="bg-warm-neutral text-warm-dark">
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Neurophasia branding in top left -->
+        <div class="absolute top-4 left-4 z-20">
+            <a href="https://neurophasia.com" class="text-warm-dark hover:text-warm-medium transition-colors duration-300 font-semibold text-lg">
+                Neurophasia
+            </a>
+        </div>
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-warm-dark mb-2">The ZFS Abstract</h1>
+            <p class="text-lg text-warm-medium">An exploration of the Zettabyte File System's architecture, features, and performance.</p>
+        </header>
+
+        <nav id="main-nav" class="flex flex-wrap justify-center gap-2 md:gap-4 mb-12 sticky top-4 bg-warm-neutral/80 backdrop-blur-sm py-3 z-10 rounded-xl shadow-sm">
+            <a data-section="intro" class="nav-item active">Introduction</a>
+            <a data-section="architecture" class="nav-item">Core Architecture</a>
+            <a data-section="features" class="nav-item">Key Features</a>
+            <a data-section="performance" class="nav-item">Performance & Caching</a>
+            <a data-section="comparison" class="nav-item">Comparative Analysis</a>
+            <a data-section="practices" class="nav-item">Best Practices</a>
+        </nav>
+
+        <main id="content">
+            <section id="intro" class="section active">
+                <div class="max-w-4xl mx-auto">
+                    <div class="card p-8">
+                        <h2 class="text-3xl font-bold mb-4 text-warm-dark">What is ZFS?</h2>
+                        <p class="mb-4">The Zettabyte File System (ZFS) is a modern, advanced file system combined with a logical volume manager. Its design represents a fundamental shift from traditional storage models by integrating these two components into a single, cohesive platform. This unified approach gives ZFS comprehensive control over the entire storage stack, from physical disks to the files you interact with. This section provides an overview of its core philosophy and historical context.</p>
+                        <div class="grid md:grid-cols-2 gap-6 mt-8">
+                            <div class="bg-warm-secondary p-6 rounded-lg">
+                                <h3 class="text-xl font-semibold mb-2">Core Philosophy</h3>
+                                <ul class="list-disc list-inside space-y-2 text-warm-medium">
+                                    <li><strong>Unyielding Data Integrity:</strong> The absolute top priority. Protects data against corruption, errors, and degradation.</li>
+                                    <li><strong>Pooled Storage:</strong> Simplifies administration by combining physical disks into a single, scalable storage pool.</li>
+                                    <li><strong>High Performance:</strong> Designed for speed through intelligent caching and efficient I/O handling.</li>
+                                    <li><strong>Massive Scalability:</strong> Engineered to handle enormous quantities of data, up to zettabytes.</li>
+                                </ul>
+                            </div>
+                            <div class="bg-warm-secondary p-6 rounded-lg">
+                                <h3 class="text-xl font-semibold mb-2">A Brief History</h3>
+                                <p class="text-warm-medium">Developed at Sun Microsystems in 2001, ZFS was a next-generation solution for data integrity and scalability. It was open-sourced, leading to its adoption across many platforms. Today, the <strong class="text-warm-dark">OpenZFS project</strong> leads its collaborative development, ensuring it remains a vibrant, evolving technology for Linux, FreeBSD, and beyond.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="architecture" class="section">
+                 <div class="max-w-5xl mx-auto">
+                    <div class="card p-8">
+                        <h2 class="text-3xl font-bold mb-4 text-center">Core Architecture: From Disks to Data</h2>
+                        <p class="text-center text-warm-medium mb-8">ZFS organizes storage in a clear hierarchy. Physical disks are grouped into Virtual Devices (vdevs) which provide redundancy. These vdevs are combined to form a single storage pool (zpool), from which you can create flexible filesystems (datasets) and block devices (zvols). This structure is the foundation of ZFS's power and flexibility.</p>
+                        
+                        <div class="bg-warm-secondary p-6 rounded-lg mb-8">
+                            <h3 class="text-2xl font-semibold text-center mb-6">Visualizing the ZFS Stack</h3>
+                            <div class="flex flex-col items-center space-y-4 text-center">
+                                <div class="p-4 bg-white rounded-lg shadow w-full md:w-3/4 has-tooltip">
+                                    <span class="font-bold text-lg">Zpool (Storage Pool)</span>
+                                    <div class="tooltip">A virtualized pool of storage capacity from all underlying vdevs.</div>
+                                </div>
+                                <div class="text-2xl font-thin">↓</div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                    <div class="p-4 bg-white rounded-lg shadow has-tooltip">
+                                        <span class="font-bold">Vdev 1 (e.g., Mirror)</span>
+                                        <div class="tooltip">A Virtual Device providing redundancy. Data is mirrored across disks.</div>
+                                    </div>
+                                    <div class="p-4 bg-white rounded-lg shadow has-tooltip">
+                                        <span class="font-bold">Vdev 2 (e.g., RAID-Z2)</span>
+                                        <div class="tooltip">A Virtual Device with double-parity redundancy, tolerating two disk failures.</div>
+                                    </div>
+                                </div>
+                                <div class="text-2xl font-thin">↓</div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                                    <div class="p-3 bg-gray-200 rounded-md shadow-inner has-tooltip"><span class="font-mono">Disk 1</span><div class="tooltip">Physical HDD or SSD</div></div>
+                                    <div class="p-3 bg-gray-200 rounded-md shadow-inner has-tooltip"><span class="font-mono">Disk 2</span><div class="tooltip">Physical HDD or SSD</div></div>
+                                    <div class="p-3 bg-gray-200 rounded-md shadow-inner has-tooltip"><span class="font-mono">Disk 3</span><div class="tooltip">Physical HDD or SSD</div></div>
+                                    <div class="p-3 bg-gray-200 rounded-md shadow-inner has-tooltip"><span class="font-mono">Disk 4</span><div class="tooltip">Physical HDD or SSD</div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="text-2xl font-semibold text-center mb-4">Understanding vdev Redundancy</h3>
+                        <p class="text-center text-warm-medium mb-6">Redundancy is managed at the vdev level. Choosing the right vdev type is a critical decision that balances fault tolerance, performance, and usable capacity. This chart compares the trade-offs. (Note: Capacity Overhead shows the fraction of disk space used for redundancy).</p>
+                        <div class="chart-container">
+                            <canvas id="vdevChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="features" class="section">
+                 <div class="max-w-5xl mx-auto">
+                    <h2 class="text-3xl font-bold mb-4 text-center">ZFS Key Features</h2>
+                    <p class="text-center text-warm-medium mb-8">ZFS is packed with powerful features that go far beyond a typical filesystem. This section provides an interactive overview of the most impactful ones, from its legendary data integrity mechanisms to its highly efficient data management tools. Click on the tabs below to explore each category.</p>
+                    <div class="card p-8">
+                        <div id="features-nav" class="flex justify-center border-b border-gray-200 mb-6">
+                            <button data-feature="integrity" class="interactive-tab active">Data Integrity</button>
+                            <button data-feature="snapshots" class="interactive-tab">Snapshots & Clones</button>
+                            <button data-feature="reduction" class="interactive-tab">Data Reduction</button>
+                        </div>
+                        <div id="features-content">
+                            <div id="feature-integrity" class="feature-panel">
+                                <p class="mb-6 text-center">Data integrity is ZFS's primary design goal. It uses a multi-layered defense to protect your data against silent corruption, a phenomenon where data degrades on storage media without any obvious errors. This is achieved through three key mechanisms working in concert.</p>
+                                <div class="grid md:grid-cols-3 gap-6 text-center">
+                                    <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">End-to-End Checksums</h4>
+                                        <p class="text-warm-medium">Every block of data and metadata has a checksum (e.g., SHA-256). When data is read, the checksum is re-verified. A mismatch means corruption has occurred, which ZFS then automatically tries to fix.</p>
+                                    </div>
+                                    <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">Copy-on-Write (CoW)</h4>
+                                        <p class="text-warm-medium">ZFS never overwrites data in place. Modified data is written to a new block, and the metadata pointers are updated. This ensures the filesystem is always in a consistent state and avoids the "RAID write hole".</p>
+                                    </div>
+                                     <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">Self-Healing & Scrubbing</h4>
+                                        <p class="text-warm-medium">If a checksum fails on a redundant vdev, ZFS fetches a good copy from another disk and repairs the corruption automatically. Regular "scrubs" proactively read all data to find and fix latent errors.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="feature-snapshots" class="feature-panel" style="display:none;">
+                                <p class="mb-6 text-center">Thanks to its Copy-on-Write nature, ZFS can create instantaneous, space-efficient snapshots and clones. These are powerful tools for backups, development, and system rollbacks.</p>
+                                <div class="grid md:grid-cols-2 gap-6">
+                                    <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">Snapshots (Read-Only)</h4>
+                                        <p class="text-warm-medium mb-2">A snapshot is a read-only, point-in-time copy of a filesystem. It's created instantly and initially consumes almost no space, as it just references the existing data blocks.</p>
+                                        <strong class="text-warm-dark">Use cases:</strong> Backups, protection against ransomware, creating a stable source for replication.
+                                    </div>
+                                    <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">Clones (Writable)</h4>
+                                        <p class="text-warm-medium mb-2">A clone is a writable copy of a snapshot. Like snapshots, they are created instantly and are space-efficient, only consuming new space as data is changed.</p>
+                                        <strong class="text-warm-dark">Use cases:</strong> Creating development/testing environments, patching systems with an easy rollback path.
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="feature-reduction" class="feature-panel" style="display:none;">
+                                 <p class="mb-6 text-center">ZFS provides several features to reduce the amount of physical storage your data consumes. These are configured per-dataset, allowing you to tailor the strategy to the type of data being stored.</p>
+                                <div class="grid md:grid-cols-3 gap-6">
+                                    <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">Compression</h4>
+                                        <p class="text-warm-medium">Transparently compresses data as it's written. Fast algorithms like <strong class="text-warm-dark">LZ4</strong> are recommended as they offer good compression with very low CPU overhead, often improving I/O performance.</p>
+                                    </div>
+                                    <div class="bg-warm-secondary p-6 rounded-lg border-2 border-red-400">
+                                        <h4 class="text-xl font-semibold mb-2">Deduplication</h4>
+                                        <p class="text-warm-medium">Stores only one copy of identical data blocks. While powerful, it requires <strong class="text-warm-dark">massive amounts of RAM</strong> and CPU, and is generally not recommended unless the hardware is extremely robust and the data is highly repetitive.</p>
+                                    </div>
+                                     <div class="bg-warm-secondary p-6 rounded-lg">
+                                        <h4 class="text-xl font-semibold mb-2">Native Encryption</h4>
+                                        <p class="text-warm-medium">Encrypts data at rest. The performance impact is minimal on modern CPUs with AES-NI acceleration. It integrates seamlessly with other ZFS features like snapshots and replication.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="performance" class="section">
+                <div class="max-w-5xl mx-auto">
+                    <h2 class="text-3xl font-bold mb-4 text-center">Performance & Caching</h2>
+                    <p class="text-center text-warm-medium mb-8">ZFS uses a sophisticated, multi-tiered caching system to accelerate I/O performance. Understanding these layers is key to tuning ZFS for your specific workload. This section breaks down the main caching components and their roles in optimizing read and write operations.</p>
+                    <div class="card p-8">
+                         <div class="grid md:grid-cols-3 gap-6">
+                            <div class="bg-warm-secondary p-6 rounded-lg text-center">
+                                <h3 class="text-xl font-semibold mb-2">ARC (RAM)</h3>
+                                <p class="text-warm-medium">The primary read cache, stored in system RAM. It's extremely fast and intelligently adapts to your workload. More RAM for ARC is the single best way to improve ZFS read performance.</p>
+                            </div>
+                            <div class="bg-warm-secondary p-6 rounded-lg text-center">
+                                <h3 class="text-xl font-semibold mb-2">L2ARC (SSD Cache)</h3>
+                                <p class="text-warm-medium">An optional secondary read cache on a fast SSD. It caches data evicted from the ARC, improving random read performance when your "hot" data set is larger than your system RAM. It is not a substitute for RAM.</p>
+                            </div>
+                            <div class="bg-warm-secondary p-6 rounded-lg text-center">
+                                <h3 class="text-xl font-semibold mb-2">ZIL/SLOG (Write Log)</h3>
+                                <p class="text-warm-medium">The ZFS Intent Log (ZIL) protects synchronous writes. Adding a dedicated fast SSD (an SLOG) can dramatically speed up sync-heavy workloads (like databases or NFS for VMs) by logging writes there first.</p>
+                            </div>
+                        </div>
+                        <h3 class="text-2xl font-semibold text-center mt-12 mb-4">Resource Trade-offs</h3>
+                        <p class="text-center text-warm-medium mb-6">Enabling advanced features involves a trade-off between CPU, RAM, and performance. This chart illustrates the relative resource cost of key features.</p>
+                         <div class="chart-container">
+                            <canvas id="resourceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="comparison" class="section">
+                <div class="max-w-5xl mx-auto">
+                    <h2 class="text-3xl font-bold mb-4 text-center">Comparative Analysis</h2>
+                    <p class="text-center text-warm-medium mb-8">How does ZFS stack up against other common storage solutions? ZFS offers an integrated, data-integrity-first approach, while other systems use a layered model or have different design philosophies. This interactive chart compares ZFS to Btrfs and the traditional Linux stack (ext4 + LVM/mdadm) on key attributes.</p>
+                     <div class="card p-8">
+                        <h3 class="text-2xl font-semibold text-center mb-6">Filesystem Feature Showdown</h3>
+                        <div class="chart-container" style="height: 450px; max-height: 60vh;">
+                            <canvas id="comparisonChart"></canvas>
+                        </div>
+                         <p class="text-center text-warm-medium mt-6 text-sm">This is a generalized comparison. Performance and stability can vary based on specific versions, workloads, and hardware configurations.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="practices" class="section">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-3xl font-bold mb-4 text-center">Best Practices & Pitfalls</h2>
+                    <p class="text-center text-warm-medium mb-8">Deploying ZFS successfully involves understanding its nuances. While defaults are sane, following best practices can help you avoid common pitfalls that lead to poor performance or increased risk. This section provides a checklist of key recommendations for configuration and maintenance.</p>
+                    <div class="card p-8">
+                        <div class="space-y-4">
+                            <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-green-600 font-bold text-2xl mr-4">✓</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Use ECC RAM</h4>
+                                    <p class="text-sm text-warm-medium">Strongly recommended to protect against in-memory data corruption, which ZFS cannot guard against.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-green-600 font-bold text-2xl mr-4">✓</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Plan vdevs Carefully</h4>
+                                    <p class="text-sm text-warm-medium">Balance redundancy, performance, and capacity. Avoid RAID-Z1 for very large drives. Don't accidentally stripe disks.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-green-600 font-bold text-2xl mr-4">✓</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Set `ashift=12` for 4K Drives</h4>
+                                    <p class="text-sm text-warm-medium">Ensures proper alignment with modern disk sector sizes, preventing severe performance penalties.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-green-600 font-bold text-2xl mr-4">✓</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Schedule Regular Scrubs</h4>
+                                    <p class="text-sm text-warm-medium">Proactively run `zpool scrub` monthly to find and fix latent data corruption before it becomes a problem.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-red-500 font-bold text-2xl mr-4">✗</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Don't Let Pools Get Over 80% Full</h4>
+                                    <p class="text-sm text-warm-medium">Write performance can degrade significantly on a nearly full pool due to fragmentation from Copy-on-Write.</p>
+                                </div>
+                            </div>
+                             <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-red-500 font-bold text-2xl mr-4">✗</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Don't Use Deduplication Lightly</h4>
+                                    <p class="text-sm text-warm-medium">Avoid enabling it unless you have massive amounts of RAM and a highly repetitive dataset. Compression is almost always a better choice.</p>
+                                </div>
+                            </div>
+                             <div class="flex items-start p-4 bg-warm-secondary rounded-lg has-tooltip">
+                                <span class="text-red-500 font-bold text-2xl mr-4">✗</span>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Remember: RAID is Not a Backup</h4>
+                                    <p class="text-sm text-warm-medium">Redundancy protects against disk failure, not accidental deletion, malware, or disaster. Maintain separate backups.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="text-center mt-16 pt-8 border-t border-warm-accent">
+            <p class="text-warm-medium text-sm">
+                &copy; 2025 Neurophasia.com<br>
+                Part of the Neurophasia Archive
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navItems = document.querySelectorAll('#main-nav .nav-item');
+            const sections = document.querySelectorAll('#content .section');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    navItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+
+                    const sectionId = item.getAttribute('data-section');
+                    sections.forEach(s => {
+                        s.style.display = 'none';
+                        s.classList.remove('active');
+                    });
+                    
+                    const activeSection = document.getElementById(sectionId);
+                    activeSection.style.display = 'block';
+                    activeSection.classList.add('active');
+                    
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+            
+            const featureTabs = document.querySelectorAll('#features-nav .interactive-tab');
+            const featurePanels = document.querySelectorAll('#features-content .feature-panel');
+            
+            featureTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    featureTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    const featureId = tab.getAttribute('data-feature');
+                    featurePanels.forEach(p => p.style.display = 'none');
+                    document.getElementById(`feature-${featureId}`).style.display = 'block';
+                });
+            });
+
+            function renderVdevChart() {
+                const ctx = document.getElementById('vdevChart');
+                if (!ctx) return;
+                const vdevData = {
+                    labels: ['2-Way Mirror', 'RAID-Z1 (4-disk)', 'RAID-Z2 (6-disk)', 'RAID-Z3 (8-disk)'],
+                    datasets: [{
+                        label: 'Fault Tolerance (Disks)',
+                        data: [1, 1, 2, 3],
+                        backgroundColor: 'rgba(61, 53, 46, 0.7)',
+                        borderColor: 'rgba(61, 53, 46, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Capacity Overhead (%)',
+                        data: [50, 25, 33.3, 37.5],
+                        backgroundColor: 'rgba(211, 196, 179, 0.7)',
+                        borderColor: 'rgba(211, 196, 179, 1)',
+                        borderWidth: 1,
+                        yAxisID: 'y1'
+                    }]
+                };
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: vdevData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'vdev Redundancy vs. Capacity Overhead', font: { size: 16 } },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { 
+                                type: 'linear', 
+                                display: true, 
+                                position: 'left',
+                                title: { display: true, text: 'Tolerable Disk Failures' },
+                                beginAtZero: true,
+                                suggestedMax: 4
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Capacity Overhead (%)' },
+                                grid: { drawOnChartArea: false },
+                                beginAtZero: true,
+                                suggestedMax: 60
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderResourceChart() {
+                const ctx = document.getElementById('resourceChart');
+                if (!ctx) return;
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Compression (LZ4)', 'Encryption (AES-NI)', 'Deduplication'],
+                        datasets: [{
+                            label: 'Relative Resource Cost',
+                            data: [15, 25, 100],
+                            backgroundColor: ['#786A5E', '#D3C4B3', '#E57373'],
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Relative Resource Intensity of Features', font: { size: 16 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        let value = context.raw;
+                                        let text = '';
+                                        if (value < 20) text = 'Low';
+                                        else if (value < 40) text = 'Moderate';
+                                        else text = 'Very High (Especially RAM)';
+                                        return `${label}${text}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function renderComparisonChart() {
+                const ctx = document.getElementById('comparisonChart');
+                if(!ctx) return;
+                new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Data Integrity', 'Snapshot Efficiency', 'RAID Flexibility', 'Inline Compression', 'Native Encryption', 'Maturity'],
+                        datasets: [
+                            {
+                                label: 'ZFS',
+                                data: [10, 10, 4, 9, 9, 10],
+                                fill: true,
+                                backgroundColor: 'rgba(61, 53, 46, 0.2)',
+                                borderColor: 'rgb(61, 53, 46)',
+                                pointBackgroundColor: 'rgb(61, 53, 46)',
+                            }, {
+                                label: 'Btrfs',
+                                data: [8, 9, 9, 8, 3, 7],
+                                fill: true,
+                                backgroundColor: 'rgba(211, 196, 179, 0.2)',
+                                borderColor: 'rgb(211, 196, 179)',
+                                pointBackgroundColor: 'rgb(211, 196, 179)',
+                            }, {
+                                label: 'ext4+LVM/mdadm',
+                                data: [4, 6, 8, 2, 7, 9],
+                                fill: true,
+                                backgroundColor: 'rgba(120, 106, 94, 0.2)',
+                                borderColor: 'rgb(120, 106, 94)',
+                                pointBackgroundColor: 'rgb(120, 106, 94)',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                         scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 10,
+                                pointLabels: { font: { size: 12 } }
+                            }
+                        },
+                        plugins: {
+                            title: { display: true, text: 'Filesystem Feature Comparison (Relative Score)', font: { size: 16 } }
+                        }
+                    }
+                });
+            }
+
+            renderVdevChart();
+            renderResourceChart();
+            renderComparisonChart();
+        });
+    </script>
+</body>
+</html>

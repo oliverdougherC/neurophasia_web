@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPNs - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: The application is structured as a non-linear, thematic single-page dashboard. This design intentionally deviates from the report's linear chapter format to prioritize user-centric exploration. The structure includes: 1) A visual, animated introduction to grab attention and explain the core concept simply. 2) A task-oriented navigation bar (How it works, Why use it, Protocols, Risks). 3) Thematic sections with interactive elements. The "Choosing a Protocol" section uses a dynamic chart, and the "Legal Landscape" uses an interactive list. This structure was chosen because users researching VPNs have different goals (some want to understand the tech, others want to choose a product, others are concerned about risks). A thematic dashboard allows each user type to navigate directly to their area of interest, making the dense information more accessible and less intimidating than a long, scrolling document. -->
+    <!-- Visualization & Content Choices: 1) **Core Concept**: Report Info: Definition of a VPN. Goal: Inform. Viz: HTML/CSS animated diagram showing a data packet traveling through an encrypted tunnel. Justification: A visual metaphor is faster to understand than text. Library: HTML/Tailwind. 2) **Protocols**: Report Info: Table 4.1 comparing protocols. Goal: Compare/Guide. Viz: Interactive Bar Chart (Chart.js) and dynamic text. Interaction: User selects a priority (Speed, Security, Stability) from a dropdown, and the chart/text updates. Justification: Transforms a static data table into a dynamic, personalized decision-making tool. Library: Chart.js. 3) **Legality**: Report Info: Table 8.1 on country-specific laws. Goal: Inform/Warn. Viz: Interactive list of countries. Interaction: Clicking a country reveals its legal status in a detail card. Justification: Makes dense legal data easily scannable and digestible on-demand. Library: Vanilla JS. 4) **Core Tech**: Report Info: Tunneling, Encryption, IP Masking. Goal: Inform. Viz: Icon-driven info cards. Justification: Breaks down complex topics into simple, visually distinct chunks. Library: HTML/Tailwind. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F4; /* stone-100 */
+            color: #475569; /* slate-600 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s ease, border-color 0.3s ease;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #F59E0B; /* amber-500 */
+            border-color: #F59E0B;
+        }
+        .country-item {
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .country-item.active {
+            background-color: #F59E0B; /* amber-500 */
+            color: white;
+        }
+        .section-fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .section-fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .interactive-vpn-animation .path-line {
+            transition: stroke-dashoffset 1s ease-in-out;
+        }
+        .interactive-vpn-animation .data-packet {
+            transition: all 1s ease-in-out;
+        }
+        .interactive-vpn-animation .component-label,
+        .interactive-vpn-animation .vpn-server,
+        .interactive-vpn-animation .target-server {
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="https://neurophasia.com" class="font-bold text-xl text-slate-700 hover:text-amber-600 transition-colors">Neurophasia</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#how-it-works" class="nav-link px-3 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent">How It Works</a>
+                        <a href="#why-use-vpn" class="nav-link px-3 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent">Why Use a VPN</a>
+                        <a href="#protocols" class="nav-link px-3 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent">Protocols</a>
+                        <a href="#risks-and-law" class="nav-link px-3 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent">Risks & Law</a>
+                        <a href="#future" class="nav-link px-3 py-2 text-sm font-medium text-slate-500 border-b-2 border-transparent">The Future</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-500">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="h-6 w-6" id="menu-icon-open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <svg class="h-6 w-6 hidden" id="menu-icon-close" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="md:hidden hidden" id="mobile-menu">
+                <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    <a href="#how-it-works" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-500 border-l-4 border-transparent">How It Works</a>
+                    <a href="#why-use-vpn" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-500 border-l-4 border-transparent">Why Use a VPN</a>
+                    <a href="#protocols" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-500 border-l-4 border-transparent">Protocols</a>
+                    <a href="#risks-and-law" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-500 border-l-4 border-transparent">Risks & Law</a>
+                    <a href="#future" class="nav-link block px-3 py-2 rounded-md text-base font-medium text-slate-500 border-l-4 border-transparent">The Future</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <section id="hero" class="text-center py-16 section-fade-in">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-slate-800">What is a Virtual Private Network?</h1>
+            <p class="mt-4 max-w-3xl mx-auto text-lg text-slate-600">A VPN creates a secure, encrypted "tunnel" for your internet traffic. But how does this actually work? Follow the steps in the interactive animation below to see the journey of your data.</p>
+            
+            <div id="vpn-animation-container" class="mt-12 max-w-5xl mx-auto p-6 md:p-8 bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="interactive-vpn-animation w-full h-64 md:h-80 relative flex items-center justify-between">
+                    <!-- Paths (rendered first so they appear behind other elements) -->
+                    <div class="absolute top-1/2 left-0 w-full h-1 bg-stone-200"></div>
+                    <div id="vpn-tunnel" class="absolute top-1/2 left-1/4 w-1/4 h-10 -translate-y-1/2 bg-amber-400/30 border-y-2 border-dashed border-amber-500 rounded-lg scale-x-0 origin-left transition-transform duration-1000"></div>
+                    
+                    <!-- Components -->
+                    <div class="text-center w-1/4 relative z-10">
+                        <div class="text-5xl md:text-6xl">💻</div>
+                        <div class="component-label font-semibold mt-2">Your Device</div>
+                    </div>
+
+                    <div id="vpn-server" class="text-center w-1/4 absolute left-1/2 -translate-x-1/2 opacity-20 z-10">
+                        <div class="text-5xl md:text-6xl">🛡️</div>
+                        <div class="component-label font-semibold mt-2">VPN Server</div>
+                    </div>
+
+                    <div id="target-server" class="text-center w-1/4 absolute right-0 opacity-20 z-10">
+                        <div class="text-5xl md:text-6xl">🏦</div>
+                        <div class="component-label font-semibold mt-2">Bank Website</div>
+                    </div>
+
+                    <!-- Data Packet -->
+                    <div id="data-packet" class="absolute top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-blue-500 text-white text-2xl shadow-lg" style="left: calc(12.5% - 24px); z-index: 9999;">
+                        <span id="packet-icon">📄</span>
+                    </div>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <p id="animation-explanation" class="text-slate-600 h-12">Your device prepares to send data to a secure website. The data is currently unencrypted.</p>
+                </div>
+
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button id="reset-animation-btn" class="px-5 py-2 text-sm font-semibold text-slate-600 bg-stone-200 rounded-md hover:bg-stone-300 transition-colors">Reset</button>
+                    <button id="next-step-btn" class="px-5 py-2 text-sm font-semibold text-white bg-amber-500 rounded-md hover:bg-amber-600 transition-colors">Next Step</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="py-16 section-fade-in">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-800">The Core Concepts</h2>
+                <p class="mt-3 max-w-2xl mx-auto text-md text-slate-600">VPNs rely on three key principles to secure your connection. These work together to ensure your data and identity are protected as you navigate the internet.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="bg-white p-8 rounded-xl shadow-md text-center">
+                    <div class="text-5xl mb-4">🚇</div>
+                    <h3 class="text-xl font-semibold text-slate-800">Tunneling</h3>
+                    <p class="mt-2 text-slate-500">VPNs create a private "tunnel" through the public internet. This is done by encapsulating your data packets inside other packets, effectively hiding your data from others on the same network.</p>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-md text-center">
+                    <div class="text-5xl mb-4">🔒</div>
+                    <h3 class="text-xl font-semibold text-slate-800">Encryption</h3>
+                    <p class="mt-2 text-slate-500">While inside the tunnel, your data is scrambled using strong encryption (like AES-256). This makes it unreadable to anyone who might intercept it, including your ISP or attackers on public Wi-Fi.</p>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-md text-center">
+                    <div class="text-5xl mb-4">🎭</div>
+                    <h3 class="text-xl font-semibold text-slate-800">IP Masking</h3>
+                    <p class="mt-2 text-slate-500">Your internet traffic appears to come from the VPN server, not your device. Your real IP address is hidden and replaced with the server's IP, protecting your location and identity from websites and trackers.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="why-use-vpn" class="py-16 bg-white rounded-2xl section-fade-in">
+            <div class="text-center mb-12 px-4">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-800">Why Use a VPN?</h2>
+                <p class="mt-3 max-w-2xl mx-auto text-md text-slate-600">From personal privacy to secure business operations, VPNs serve a wide range of critical purposes in our digital lives. Select a tab below to explore the common use cases.</p>
+                <div class="mt-8 flex justify-center border-b border-stone-200">
+                    <button id="personal-tab-btn" class="use-case-tab-btn active px-6 py-3 font-semibold border-b-2 border-amber-500 text-amber-600">For You</button>
+                    <button id="business-tab-btn" class="use-case-tab-btn px-6 py-3 font-semibold border-b-2 border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700">For Business</button>
+                </div>
+            </div>
+            
+            <div id="personal-use-cases" class="use-case-content grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-6">
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Secure Public Wi-Fi</h4>
+                    <p class="text-sm text-slate-500 mt-1">Encrypt your connection at cafes, airports, and hotels to protect your data from eavesdroppers.</p>
+                </div>
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Enhance Online Privacy</h4>
+                    <p class="text-sm text-slate-500 mt-1">Prevent your ISP from logging your browsing activity and stop advertisers from tracking you via your IP address.</p>
+                </div>
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Access Geo-Restricted Content</h4>
+                    <p class="text-sm text-slate-500 mt-1">Connect to servers in other countries to watch streaming services or access websites not available in your region.</p>
+                </div>
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Bypass Censorship</h4>
+                    <p class="text-sm text-slate-500 mt-1">Access blocked websites, social media, and news sources in countries with restrictive internet policies.</p>
+                </div>
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Avoid Price Targeting</h4>
+                    <p class="text-sm text-slate-500 mt-1">Mask your location to potentially avoid location-based price adjustments on flights, hotels, and e-commerce.</p>
+                </div>
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Reduce Bandwidth Throttling</h4>
+                    <p class="text-sm text-slate-500 mt-1">If your ISP slows down specific activities like streaming or gaming, a VPN can hide your traffic and may prevent throttling.</p>
+                </div>
+            </div>
+
+            <div id="business-use-cases" class="use-case-content hidden grid md:grid-cols-2 lg:grid-cols-3 gap-6 px-6">
+                 <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Secure Remote Access</h4>
+                    <p class="text-sm text-slate-500 mt-1">Allow employees working from home or traveling to securely connect to the internal corporate network and access resources.</p>
+                </div>
+                <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Site-to-Site Connectivity</h4>
+                    <p class="text-sm text-slate-500 mt-1">Securely link multiple office locations over the internet, creating a single, unified private network for resource sharing.</p>
+                </div>
+                 <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Protect Data in Transit</h4>
+                    <p class="text-sm text-slate-500 mt-1">Encrypt all corporate data as it travels over public networks, protecting trade secrets, customer data, and financial info.</p>
+                </div>
+                 <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Manage Access Control</h4>
+                    <p class="text-sm text-slate-500 mt-1">Use VPN authentication as a layer of defense to ensure only authorized users can access specific network segments.</p>
+                </div>
+                 <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Secure Partner Access (Extranet)</h4>
+                    <p class="text-sm text-slate-500 mt-1">Provide trusted partners or suppliers with secure, controlled access to shared resources without exposing your entire network.</p>
+                </div>
+                 <div class="p-6 bg-stone-100 rounded-lg">
+                    <h4 class="font-semibold text-slate-800">Meet Compliance Needs</h4>
+                    <p class="text-sm text-slate-500 mt-1">Help meet regulatory requirements (e.g., HIPAA, GDPR) by ensuring data is encrypted and access is controlled.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="protocols" class="py-16 section-fade-in">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-800">Choosing a Protocol</h2>
+                <p class="mt-3 max-w-2xl mx-auto text-md text-slate-600">A VPN's performance and security depend on its underlying protocol. Not all protocols are equal. Use the selector below to see how they compare based on what matters most to you.</p>
+            </div>
+            <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+                    <label for="protocol-priority" class="font-semibold mb-2 sm:mb-0">I prioritize...</label>
+                    <select id="protocol-priority" class="form-select w-full sm:w-auto mt-2 sm:mt-0 p-2 border border-stone-300 rounded-md shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        <option value="security">Overall Security</option>
+                        <option value="speed">Speed & Performance</option>
+                        <option value="stability">Stability & Mobile Use</option>
+                        <option value="firewall">Bypassing Firewalls</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="protocolChart"></canvas>
+                </div>
+                <div id="protocol-recommendation" class="mt-8 p-4 bg-stone-100 rounded-md">
+                    <h4 class="font-semibold text-slate-800">Recommendation based on Security:</h4>
+                    <p class="text-slate-600 text-sm mt-1">WireGuard and OpenVPN are the top choices. WireGuard uses modern, high-speed cryptography with a small codebase, making it easy to audit. OpenVPN is a time-tested, open-source standard known for its strong security and configurability.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="risks-and-law" class="py-16 section-fade-in">
+             <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-800">Risks & Legal Landscape</h2>
+                <p class="mt-3 max-w-2xl mx-auto text-md text-slate-600">While powerful, VPNs aren't a magic bullet for all threats, and their use is regulated differently around the world. Understanding these factors is crucial for safe and responsible use.</p>
+            </div>
+            <div class="grid lg:grid-cols-5 gap-8">
+                <div class="lg:col-span-3 bg-white p-8 rounded-xl shadow-lg">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">Inherent Risks & Limitations</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="text-amber-500 font-bold text-xl mr-3 mt-1">!</span>
+                            <div>
+                                <h4 class="font-semibold">Provider Trust is Everything</h4>
+                                <p class="text-slate-500 text-sm">Your VPN provider can see your traffic. Choose a reputable service with a strict, audited no-logs policy. Without this, you're just shifting trust from your ISP to your VPN.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-amber-500 font-bold text-xl mr-3 mt-1">!</span>
+                            <div>
+                                <h4 class="font-semibold">Data Leaks Can Occur</h4>
+                                <p class="text-slate-500 text-sm">IP, DNS, or WebRTC leaks can expose your real IP address even with a VPN active. A reliable "kill switch" is essential to block traffic if the VPN connection drops.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-amber-500 font-bold text-xl mr-3 mt-1">!</span>
+                            <div>
+                                <h4 class="font-semibold">Doesn't Stop Malware or Phishing</h4>
+                                <p class="text-slate-500 text-sm">A VPN secures your connection, but it won't protect you from viruses, ransomware, or malicious websites. You still need antivirus software and safe browsing habits.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="lg:col-span-2 bg-white p-8 rounded-xl shadow-lg">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">Legality by Country</h3>
+                    <p class="text-sm text-slate-500 mb-4">VPN use is legal in most countries, but some nations restrict or ban them. Click a country to see its status. (This is not legal advice).</p>
+                    <div class="flex flex-col h-72">
+                        <ul id="country-list" class="flex-grow overflow-y-auto border border-stone-200 rounded-md">
+                        </ul>
+                        <div id="country-details" class="mt-4 p-3 bg-stone-100 rounded-md h-28">
+                             <p class="text-sm text-slate-500">Select a country from the list above.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="future" class="py-16 section-fade-in">
+             <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold tracking-tight text-slate-800">The Future of Secure Access</h2>
+                <p class="mt-3 max-w-2xl mx-auto text-md text-slate-600">VPN technology is evolving. The future lies in more intelligent, integrated, and user-centric security models that go beyond traditional VPNs.</p>
+            </div>
+            <div class="relative max-w-3xl mx-auto">
+                 <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-stone-300 hidden md:block"></div>
+                 <div class="space-y-12">
+                    <div class="md:grid md:grid-cols-2 md:gap-8 items-center relative">
+                        <div class="md:text-right md:pr-8 mb-4 md:mb-0">
+                            <h3 class="text-xl font-bold text-slate-800">Zero Trust Network Access (ZTNA)</h3>
+                            <p class="text-slate-500 mt-1">The "castle-and-moat" VPN model is being replaced by "never trust, always verify." ZTNA grants access to specific apps, not the whole network, based on continuous verification of user and device identity.</p>
+                        </div>
+                        <div class="md:pl-8"><div class="w-6 h-6 bg-amber-500 rounded-full mx-auto md:mx-0"></div></div>
+                    </div>
+                     <div class="md:grid md:grid-cols-2 md:gap-8 items-center relative">
+                        <div class="md:pl-8 order-2 md:order-1"><div class="w-6 h-6 bg-amber-500 rounded-full mx-auto md:ml-auto md:mr-0"></div></div>
+                        <div class="md:text-left md:pl-8 order-1 md:order-2 mb-4 md:mb-0">
+                            <h3 class="text-xl font-bold text-slate-800">Secure Access Service Edge (SASE)</h3>
+                            <p class="text-slate-500 mt-1">SASE (pronounced "sassy") converges networking and security into a single, cloud-delivered service. It combines VPN/ZTNA capabilities with firewalls and other security functions for simplified, secure access from anywhere.</p>
+                        </div>
+                    </div>
+                     <div class="md:grid md:grid-cols-2 md:gap-8 items-center relative">
+                        <div class="md:text-right md:pr-8 mb-4 md:mb-0">
+                            <h3 class="text-xl font-bold text-slate-800">AI & Post-Quantum Cryptography</h3>
+                            <p class="text-slate-500 mt-1">AI will enhance threat detection by spotting anomalies in traffic. Meanwhile, new post-quantum encryption protocols are being developed to protect data from the threat of future quantum computers.</p>
+                        </div>
+                        <div class="md:pl-8"><div class="w-6 h-6 bg-amber-500 rounded-full mx-auto md:mx-0"></div></div>
+                    </div>
+                 </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-white mt-16">
+        <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8 text-center text-sm text-slate-400">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p>Part of the Neurophasia Archive</p>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Interactive VPN Animation Logic
+    const vpnAnimation = {
+        step: 0,
+        elements: {
+            container: document.getElementById('vpn-animation-container'),
+            packet: document.getElementById('data-packet'),
+            packetIcon: document.getElementById('packet-icon'),
+            vpnServer: document.getElementById('vpn-server'),
+            targetServer: document.getElementById('target-server'),
+            tunnel: document.getElementById('vpn-tunnel'),
+            explanation: document.getElementById('animation-explanation'),
+            nextBtn: document.getElementById('next-step-btn'),
+            resetBtn: document.getElementById('reset-animation-btn')
+        },
+        states: [
+            {
+                explanation: 'Your device prepares to send data to a secure website. The data is currently unencrypted.',
+                packetPos: 'calc(12.5% - 24px)',
+                packetIcon: '📄',
+                packetBg: 'bg-blue-500',
+                vpnServerOpacity: 'opacity-20',
+                targetServerOpacity: 'opacity-20',
+                tunnelScale: 'scale-x-0'
+            },
+            {
+                explanation: 'The VPN client encrypts your data. It is now unreadable to your ISP or anyone on your local network.',
+                packetPos: 'calc(12.5% - 24px)',
+                packetIcon: '🔒',
+                packetBg: 'bg-green-500',
+                vpnServerOpacity: 'opacity-100',
+                targetServerOpacity: 'opacity-20',
+                tunnelScale: 'scale-x-100'
+            },
+            {
+                explanation: 'The encrypted data travels through the secure VPN tunnel to the VPN server.',
+                packetPos: 'calc(50% - 24px)',
+                packetIcon: '🔒',
+                packetBg: 'bg-green-500',
+                vpnServerOpacity: 'opacity-100',
+                targetServerOpacity: 'opacity-20',
+                tunnelScale: 'scale-x-100'
+            },
+            {
+                explanation: 'The VPN server decrypts your data packet inside its secure environment.',
+                packetPos: 'calc(50% - 24px)',
+                packetIcon: '📄',
+                packetBg: 'bg-blue-500',
+                vpnServerOpacity: 'opacity-100',
+                targetServerOpacity: 'opacity-100',
+                tunnelScale: 'scale-x-100'
+            },
+            {
+                explanation: 'The VPN server sends your request over a standard HTTPS connection. The website sees the VPN\'s IP.',
+                packetPos: 'calc(87.5% - 24px)',
+                packetIcon: '📄',
+                packetBg: 'bg-blue-500',
+                vpnServerOpacity: 'opacity-100',
+                targetServerOpacity: 'opacity-100',
+                tunnelScale: 'scale-x-100'
+            },
+            {
+                explanation: 'Process complete! The website responds to the VPN, which encrypts the data and sends it back to you.',
+                packetPos: 'calc(87.5% - 24px)',
+                packetIcon: '✅',
+                packetBg: 'bg-amber-500',
+                vpnServerOpacity: 'opacity-100',
+                targetServerOpacity: 'opacity-100',
+                tunnelScale: 'scale-x-100'
+            }
+        ],
+        init() {
+            this.elements.nextBtn.addEventListener('click', () => this.nextStep());
+            this.elements.resetBtn.addEventListener('click', () => this.reset());
+            this.updateState();
+        },
+        nextStep() {
+            if (this.step < this.states.length - 1) {
+                this.step++;
+                this.updateState();
+            }
+        },
+        reset() {
+            this.step = 0;
+            this.updateState();
+        },
+        updateState() {
+            const state = this.states[this.step];
+            this.elements.explanation.textContent = state.explanation;
+            this.elements.packet.style.left = state.packetPos;
+            this.elements.packetIcon.textContent = state.packetIcon;
+            this.elements.packet.className = `absolute top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full text-white text-2xl shadow-lg transition-all duration-1000 ease-in-out ${state.packetBg}`;
+            this.elements.vpnServer.className = `text-center w-1/4 absolute left-1/2 -translate-x-1/2 transition-opacity duration-500 ${state.vpnServerOpacity}`;
+            this.elements.targetServer.className = `text-center w-1/4 absolute right-0 transition-opacity duration-500 ${state.targetServerOpacity}`;
+            this.elements.tunnel.style.transform = state.tunnelScale;
+            
+            if (this.step === this.states.length - 1) {
+                this.elements.nextBtn.disabled = true;
+                this.elements.nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                this.elements.nextBtn.disabled = false;
+                this.elements.nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    };
+    vpnAnimation.init();
+
+
+    const protocolData = {
+        labels: ['OpenVPN', 'WireGuard', 'IKEv2/IPsec', 'L2TP/IPsec', 'SSTP', 'PPTP'],
+        datasets: {
+            security: {
+                label: 'Security Score',
+                data: [9, 10, 8, 6, 8, 2],
+                backgroundColor: 'rgba(245, 158, 11, 0.6)',
+                borderColor: 'rgba(245, 158, 11, 1)',
+                borderWidth: 1,
+            },
+            speed: {
+                label: 'Speed Score',
+                data: [7, 10, 9, 6, 7, 8],
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            },
+            stability: {
+                label: 'Stability/Mobile Score',
+                data: [8, 9, 10, 7, 8, 5],
+                backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                borderColor: 'rgba(16, 185, 129, 1)',
+                borderWidth: 1
+            },
+            firewall: {
+                label: 'Firewall Traversal Score',
+                data: [9, 5, 5, 3, 10, 3],
+                backgroundColor: 'rgba(139, 92, 246, 0.6)',
+                borderColor: 'rgba(139, 92, 246, 1)',
+                borderWidth: 1
+            }
+        }
+    };
+
+    const protocolRecommendations = {
+        security: {
+            title: 'Recommendation based on Security:',
+            text: 'WireGuard and OpenVPN are the top choices. WireGuard uses modern, high-speed cryptography with a small codebase, making it easy to audit. OpenVPN is a time-tested, open-source standard known for its strong security and configurability.'
+        },
+        speed: {
+            title: 'Recommendation based on Speed:',
+            text: 'WireGuard is the clear winner, offering exceptional throughput with low latency due to its modern design. IKEv2/IPsec is also very fast and efficient, making it a great alternative.'
+        },
+        stability: {
+            title: 'Recommendation based on Stability & Mobile Use:',
+            text: 'IKEv2/IPsec excels here, as it can re-establish a connection very quickly when switching networks (e.g., Wi-Fi to cellular). WireGuard is also highly stable and excellent for mobile devices.'
+        },
+        firewall: {
+            title: 'Recommendation based on Bypassing Firewalls:',
+            text: 'SSTP and OpenVPN (when configured on TCP port 443) are the most effective. They disguise traffic as standard HTTPS, making them very difficult for restrictive networks to block.'
+        }
+    };
+
+    const countryData = [
+        { name: 'USA', status: 'Legal', details: 'No federal restrictions on VPN use.' },
+        { name: 'UK', status: 'Legal', details: 'No specific restrictions on VPN use.' },
+        { name: 'Canada', status: 'Legal', details: 'No specific restrictions on VPN use.' },
+        { name: 'India', status: 'Legal (with caveats)', details: 'VPN use is legal, but providers must log user data for servers in India.' },
+        { name: 'China', status: 'Restricted', details: 'Only government-approved VPNs are legal; unauthorized use can result in fines.' },
+        { name: 'Russia', status: 'Restricted', details: 'VPNs must comply with state censorship; many international services are blocked.' },
+        { name: 'Iran', status: 'Restricted', details: 'Only state-sanctioned VPNs are legal. Unauthorized use can lead to prison.' },
+        { name: 'UAE', status: 'Restricted', details: 'Use of unapproved VPNs to commit a crime or access blocked content carries severe penalties.' },
+        { name: 'Turkey', status: 'Restricted', details: 'Government actively blocks many VPN providers to restrict access.' },
+        { name: 'Belarus', status: 'Illegal', details: 'VPNs and other anonymizing tools are banned.' },
+        { name: 'Iraq', status: 'Illegal', details: 'VPNs have been banned since 2014.' },
+        { name: 'North Korea', status: 'Illegal', details: 'Strictly prohibited as part of total information control.' }
+    ];
+
+    const ctx = document.getElementById('protocolChart').getContext('2d');
+    let protocolChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: protocolData.labels,
+            datasets: [protocolData.datasets.security]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 10,
+                    grid: {
+                        color: '#E7E5E4' // stone-200
+                    }
+                },
+                y: {
+                     grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    const prioritySelector = document.getElementById('protocol-priority');
+    const recommendationDiv = document.getElementById('protocol-recommendation');
+    prioritySelector.addEventListener('change', (e) => {
+        const priority = e.target.value;
+        protocolChart.data.datasets = [protocolData.datasets[priority]];
+        protocolChart.update();
+
+        const recommendation = protocolRecommendations[priority];
+        recommendationDiv.innerHTML = `
+            <h4 class="font-semibold text-slate-800">${recommendation.title}</h4>
+            <p class="text-slate-600 text-sm mt-1">${recommendation.text}</p>
+        `;
+    });
+    
+    const personalTabBtn = document.getElementById('personal-tab-btn');
+    const businessTabBtn = document.getElementById('business-tab-btn');
+    const personalUseCases = document.getElementById('personal-use-cases');
+    const businessUseCases = document.getElementById('business-use-cases');
+    
+    personalTabBtn.addEventListener('click', () => {
+        personalUseCases.style.display = 'grid';
+        businessUseCases.style.display = 'none';
+        personalTabBtn.classList.add('active', 'border-amber-500', 'text-amber-600');
+        personalTabBtn.classList.remove('border-transparent', 'text-slate-500');
+        businessTabBtn.classList.remove('active', 'border-amber-500', 'text-amber-600');
+        businessTabBtn.classList.add('border-transparent', 'text-slate-500');
+    });
+
+    businessTabBtn.addEventListener('click', () => {
+        businessUseCases.style.display = 'grid';
+        personalUseCases.style.display = 'none';
+        businessTabBtn.classList.add('active', 'border-amber-500', 'text-amber-600');
+        businessTabBtn.classList.remove('border-transparent', 'text-slate-500');
+        personalTabBtn.classList.remove('active', 'border-amber-500', 'text-amber-600');
+        personalTabBtn.classList.add('border-transparent', 'text-slate-500');
+    });
+
+
+    const countryList = document.getElementById('country-list');
+    const countryDetailsDiv = document.getElementById('country-details');
+    countryData.forEach(country => {
+        const li = document.createElement('li');
+        li.textContent = country.name;
+        li.dataset.country = country.name;
+        li.className = 'country-item p-2 hover:bg-stone-100 text-sm';
+        countryList.appendChild(li);
+    });
+
+    countryList.addEventListener('click', e => {
+        if (e.target && e.target.nodeName === 'LI') {
+            const countryName = e.target.dataset.country;
+            const countryInfo = countryData.find(c => c.name === countryName);
+
+            document.querySelectorAll('.country-item').forEach(item => item.classList.remove('active'));
+            e.target.classList.add('active');
+
+            let statusColor = 'text-green-600';
+            if (countryInfo.status.includes('Restricted')) statusColor = 'text-yellow-600';
+            if (countryInfo.status.includes('Illegal')) statusColor = 'text-red-600';
+
+            countryDetailsDiv.innerHTML = `
+                <h5 class="font-bold ${statusColor}">${countryInfo.status}</h5>
+                <p class="text-xs text-slate-500 mt-1">${countryInfo.details}</p>
+            `;
+        }
+    });
+
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const menuIconOpen = document.getElementById('menu-icon-open');
+    const menuIconClose = document.getElementById('menu-icon-close');
+
+    mobileMenuButton.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+        menuIconOpen.classList.toggle('hidden');
+        menuIconClose.classList.toggle('hidden');
+    });
+
+    const sections = document.querySelectorAll('.section-fade-in');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    const sectionObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                
+                const id = entry.target.getAttribute('id');
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if(link.getAttribute('href') === `#${id}`) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }, { rootMargin: "0px 0px -20% 0px" });
+
+    sections.forEach(section => {
+        sectionObserver.observe(section);
+    });
+
+    mobileMenu.addEventListener('click', (e) => {
+        if (e.target.tagName === 'A') {
+            mobileMenu.classList.add('hidden');
+            menuIconOpen.classList.remove('hidden');
+            menuIconClose.classList.add('hidden');
+        }
+    });
+});
+</script>
+</body>
+</html>

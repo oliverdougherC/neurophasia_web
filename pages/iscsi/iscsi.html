@@ -40,6 +40,7 @@
 
         .content-section {
             display: none;
+            scroll-margin-top: 5rem; /* Account for sticky header height (h-16 = 4rem) + some padding */
         }
         .content-section.active {
             display: block;
@@ -114,7 +115,10 @@
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" style="scroll-margin-top: 5rem;">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">The iSCSI Abstract</h1>
+        </div>
         <div>
             <div id="content-container">
                 <!-- Overview Section -->

@@ -158,7 +158,7 @@
 
         <section id="intro" class="text-center mb-16">
             <h1 class="text-4xl md:text-5xl font-bold mb-4 text-slate-800">
-                An Interactive Guide to Video 
+                An Abstract of
                 <span class="font-bold">
                     <span class="text-red-500">C</span><span class="text-orange-500">o</span><span class="text-yellow-500">l</span><span class="text-green-500">o</span><span class="text-blue-500">r</span>
                 </span>
@@ -536,17 +536,39 @@ document.addEventListener('DOMContentLoaded', function() {
         '8': { 
             shades: 256, 
             colors: '16.7 Million',
-            gradient: 'linear-gradient(to right, #ef4444 12.5%, #f97316 12.5%, #f97316 25%, #eab308 25%, #eab308 37.5%, #84cc16 37.5%, #84cc16 50%, #22c55e 50%, #22c55e 62.5%, #14b8a6 62.5%, #14b8a6 75%, #3b82f6 75%, #3b82f6 87.5%, #8b5cf6 87.5%)'
+            gradient: (() => {
+                const stops = [];
+                for (let i = 0; i < 16; i++) {
+                    const hue = (i / 15) * 300; // 0 to 300 degrees (red to magenta)
+                    const color = `hsl(${hue}, 70%, 55%)`;
+                    const startPercent = (i / 16) * 100;
+                    const endPercent = ((i + 1) / 16) * 100;
+                    stops.push(`${color} ${startPercent}%`);
+                    stops.push(`${color} ${endPercent}%`);
+                }
+                return `linear-gradient(to right, ${stops.join(', ')})`;
+            })()
         },
         '10': { 
             shades: 1024, 
             colors: '1.07 Billion',
-            gradient: 'linear-gradient(to right, #ef4444, #f56522, #f97316, #f48710, #eab308, #c1c211, #84cc16, #57c93a, #22c55e, #18bca9, #14b8a6, #0fa5c6, #06b6d4, #2499e9, #3b82f6, #636ef8, #8b5cf6, #b252f2, #d946ef)'
+            gradient: (() => {
+                const stops = [];
+                for (let i = 0; i < 128; i++) {
+                    const hue = (i / 127) * 300; // 0 to 300 degrees (red to magenta)
+                    const color = `hsl(${hue}, 70%, 55%)`;
+                    const startPercent = (i / 128) * 100;
+                    const endPercent = ((i + 1) / 128) * 100;
+                    stops.push(`${color} ${startPercent}%`);
+                    stops.push(`${color} ${endPercent}%`);
+                }
+                return `linear-gradient(to right, ${stops.join(', ')})`;
+            })()
         },
         '12': { 
             shades: 4096, 
             colors: '68.7 Billion',
-            gradient: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #84cc16, #22c55e, #14b8a6, #06b6d4, #3b82f6, #8b5cf6, #d946ef)'
+            gradient: 'linear-gradient(to right, hsl(0, 70%, 55%), hsl(60, 70%, 55%), hsl(120, 70%, 55%), hsl(180, 70%, 55%), hsl(240, 70%, 55%), hsl(300, 70%, 55%))'
         }
     };
     

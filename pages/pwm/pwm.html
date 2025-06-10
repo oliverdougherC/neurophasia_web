@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWM - Neurophasia</title>
+    <!-- Chosen Palette: "Cool Neutral" - A calm and professional palette using shades of slate, blue, and a warm sand accent. The light background ensures readability, while the muted colors for data visualization are clear without being distracting. -->
+    <!-- Application Structure Plan: The SPA is designed as an educational journey. It starts with a high-level introduction and a core interactive "PWM Explorer" to grasp the fundamentals. The user then flows into tabbed sections for deeper dives: "How it's Made" (Generation), "What it's Used For" (Applications), and "PWM in Context" (Comparisons). This task-oriented structure prioritizes hands-on learning over passively reading a report. Key interactions include sliders for real-time chart updates, buttons to switch application scenarios, and tab-based navigation to prevent cognitive overload. This structure was chosen to make a complex technical topic approachable and engaging for a broad audience, from students to professionals. -->
+    <!-- Visualization & Content Choices: 
+        - PWM Explorer: Report Info (Duty Cycle, Frequency, Avg. Voltage) -> Goal (Explore Relationships) -> Viz (Dynamic Line Chart - Chart.js) -> Interaction (Sliders for Duty Cycle/Frequency) -> Justification (Provides immediate, kinesthetic understanding of core parameters).
+        - Generation Methods: Report Info (Analog vs. Digital) -> Goal (Compare & Contrast) -> Viz (Side-by-side animated diagrams made with HTML/CSS/JS) -> Interaction (Click to see animation) -> Justification (Visually demonstrates the conceptual difference in how signals are generated).
+        - Applications: Report Info (Motor, LED, Audio) -> Goal (Show Practical Use) -> Viz (Contextual text + simple interactive HTML/CSS elements) -> Interaction (Slider for LED brightness, Buttons for motor control) -> Justification (Connects abstract concepts to tangible, real-world outcomes).
+        - Comparisons: Report Info (PWM vs. PAM vs. PPM) -> Goal (Differentiate) -> Viz (Interactive Comparison Table) -> Interaction (Hover/Click on table rows to highlight characteristics) -> Justification (Allows for direct, point-by-point comparison of related technologies).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-main: #F8F7F4; /* Light Cream */
+            --bg-card: #FFFFFF;
+            --text-primary: #1E293B; /* Slate 800 */
+            --text-secondary: #475569; /* Slate 600 */
+            --border-color: #E2E8F0; /* Slate 200 */
+            --accent-primary: #3B82F6; /* Blue 500 */
+            --accent-secondary: #F59E0B; /* Amber 500 */
+        }
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .nav-btn.active {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+        .nav-btn:not(.active):hover {
+            background-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        .interactive-led {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: var(--accent-secondary);
+            transition: box-shadow 0.2s, opacity 0.2s;
+            margin: 1rem auto;
+            border: 4px solid var(--border-color);
+        }
+        .motor-fan {
+            width: 100px;
+            height: 100px;
+            margin: 1rem auto;
+            position: relative;
+        }
+        .fan-blade {
+            position: absolute;
+            width: 48px;
+            height: 16px;
+            background-color: var(--text-secondary);
+            border-radius: 8px;
+            top: 42px;
+            left: 26px;
+            transform-origin: 24px 8px;
+        }
+        #analogGenCanvas, #audioCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="antialiased">
+    <div class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 md:px-8 py-3">
+            <a href="https://neurophasia.com" class="text-xl font-bold text-gray-800 hover:text-blue-600 transition-colors">Neurophasia</a>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-2">The PWM Abstract</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">Explore the principles, applications, and technical nuances of PWM through dynamic visualizations and hands-on examples.</p>
+        </header>
+
+        <nav class="flex justify-center items-center space-x-2 md:space-x-4 mb-12 p-2 bg-white rounded-xl shadow-sm max-w-2xl mx-auto">
+            <button class="nav-btn active" data-target="explorer">PWM Explorer</button>
+            <button class="nav-btn" data-target="generation">Generation</button>
+            <button class="nav-btn" data-target="applications">Applications</button>
+            <button class="nav-btn" data-target="comparison">Comparisons</button>
+        </nav>
+
+        <main>
+            <section id="explorer" class="content-section active">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                    <div class="text-center mb-6">
+                        <h2 class="text-3xl font-bold mb-2">PWM Explorer</h2>
+                        <p class="text-md text-gray-600 max-w-2xl mx-auto">This is the heart of PWM. A PWM signal is a digital signal that rapidly switches between ON (High) and OFF (Low). By changing how long the signal is ON versus OFF over a fixed time period, we can control the average voltage. Use the sliders below to see this in action.</p>
+                    </div>
+
+                    <div class="chart-container mb-8">
+                        <canvas id="pwmChart"></canvas>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <label for="dutyCycleSlider" class="block text-sm font-medium text-gray-700">Duty Cycle: <span id="dutyCycleValue" class="font-bold text-blue-600">50%</span></label>
+                            <input id="dutyCycleSlider" type="range" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <p class="text-xs text-gray-500 mt-1">The percentage of time the signal is ON in one cycle. This directly controls the average power or voltage.</p>
+                        </div>
+                        <div>
+                            <label for="frequencySlider" class="block text-sm font-medium text-gray-700">Frequency: <span id="frequencyValue" class="font-bold text-blue-600">500 Hz</span></label>
+                            <input id="frequencySlider" type="range" min="100" max="2000" value="500" step="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <p class="text-xs text-gray-500 mt-1">How many ON/OFF cycles happen per second. Higher frequencies lead to smoother output for many devices.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+                         <h3 class="text-xl font-semibold">Resulting Average Voltage</h3>
+                         <p class="text-4xl font-bold text-blue-600 mt-2" id="avgVoltageDisplay">2.50 V</p>
+                         <p class="text-sm text-gray-500 mt-1">(Assuming a 5V supply)</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="generation" class="content-section">
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">How PWM is Generated</h2>
+                        <p class="text-md text-gray-600 max-w-2xl mx-auto">PWM signals can be created using both analog and digital methods. Digital generation via microcontrollers is most common today due to its precision and flexibility, but understanding the analog method provides core insight.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="border border-gray-200 p-4 rounded-lg">
+                            <h3 class="text-xl font-semibold text-center mb-4">Analog Generation</h3>
+                            <p class="text-sm text-gray-600 mb-4">The classic analog method compares a desired analog level (Modulating Signal) with a high-frequency carrier wave (like a sawtooth or triangle wave). The comparator's output is a PWM signal where the pulse width is determined by the intersection points.</p>
+                            <div class="h-48 bg-gray-50 rounded-md p-2 relative">
+                                <canvas id="analogGenCanvas"></canvas>
+                            </div>
+                        </div>
+                        <div class="border border-gray-200 p-4 rounded-lg">
+                            <h3 class="text-xl font-semibold text-center mb-4">Digital Generation</h3>
+                            <p class="text-sm text-gray-600 mb-4">A microcontroller uses a timer/counter. The timer counts from 0 up to a 'period' value. The output pin is turned ON at the start and turned OFF when the counter reaches a 'compare' value, which sets the duty cycle.</p>
+                             <div class="h-48 bg-gray-50 rounded-md p-2 font-mono text-xs text-gray-500 flex flex-col justify-center items-center">
+                                <div class="w-full text-left">
+                                    <p>> Timer counts: <span id="digitalCounter" class="font-bold text-blue-600">0</span></p>
+                                    <p>> Period Register = 100</p>
+                                    <p>> Compare Register (Duty) = 75</p>
+                                </div>
+                                <div class="w-full h-8 bg-gray-200 mt-4 rounded relative">
+                                    <div id="digitalOutput" class="h-full bg-blue-500 rounded transition-colors duration-100" style="width: 100%;"></div>
+                                </div>
+                                 <p class="mt-2">Output: <span id="digitalState" class="font-bold">HIGH</span></p>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+            
+            <section id="applications" class="content-section">
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">What is PWM Used For?</h2>
+                        <p class="text-md text-gray-600 max-w-2xl mx-auto">PWM's efficiency and precision make it ubiquitous. It's used for controlling power in countless devices, from simple toys to industrial machinery. Explore some common applications below.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="border border-gray-200 p-4 rounded-lg text-center">
+                            <h3 class="text-xl font-semibold mb-2">💡 LED Dimming</h3>
+                            <p class="text-sm text-gray-600 mb-4">By rapidly switching an LED on and off, PWM controls its perceived brightness without changing its color, which can happen with analog dimming. The eye averages the light pulses.</p>
+                            <div id="ledDemo" class="interactive-led"></div>
+                            <label for="ledSlider" class="text-sm font-medium text-gray-700">Brightness: <span id="ledValue">100%</span></label>
+                            <input id="ledSlider" type="range" min="0" max="100" value="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2">
+                        </div>
+
+                        <div class="border border-gray-200 p-4 rounded-lg text-center">
+                            <h3 class="text-xl font-semibold mb-2">⚙️ DC Motor Control</h3>
+                            <p class="text-sm text-gray-600 mb-4">PWM controls motor speed by varying the average voltage sent to it. An H-Bridge circuit is often used with PWM to also control the motor's direction.</p>
+                            <div class="motor-fan">
+                                <div class="fan-blade" style="transform: rotate(0deg);"></div>
+                                <div class="fan-blade" style="transform: rotate(90deg);"></div>
+                                <div class="fan-blade" style="transform: rotate(180deg);"></div>
+                                <div class="fan-blade" style="transform: rotate(270deg);"></div>
+                            </div>
+                            <div class="flex justify-center space-x-2">
+                                <button id="motorSlow" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Slow</button>
+                                <button id="motorMedium" class="px-3 py-1 bg-blue-500 text-white rounded">Medium</button>
+                                <button id="motorFast" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Fast</button>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 p-4 rounded-lg text-center">
+                            <h3 class="text-xl font-semibold mb-2">🔊 Class-D Audio Amps</h3>
+                            <p class="text-sm text-gray-600 mb-4">A Class-D amplifier converts an analog audio signal into a high-frequency PWM signal. This signal is amplified efficiently and then filtered to reproduce the original audio sound for a speaker.</p>
+                             <div class="h-40 flex items-center justify-center">
+                                <canvas id="audioCanvas"></canvas>
+                            </div>
+                            <p class="text-xs text-gray-500">Sine wave (audio) modulated into a PWM signal.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="comparison" class="content-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                     <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">PWM in Context</h2>
+                        <p class="text-md text-gray-600 max-w-2xl mx-auto">PWM is one of several ways to modulate a signal using pulses. Understanding its alternatives—Pulse Amplitude Modulation (PAM) and Pulse Position Modulation (PPM)—highlights why PWM is so uniquely suited for power control.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-max text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="p-3 font-semibold text-sm text-gray-700 border-b">Feature</th>
+                                    <th class="p-3 font-semibold text-sm text-gray-700 border-b">PWM (Width)</th>
+                                    <th class="p-3 font-semibold text-sm text-gray-700 border-b">PAM (Amplitude)</th>
+                                    <th class="p-3 font-semibold text-sm text-gray-700 border-b">PPM (Position)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-3 border-b border-gray-200 font-medium">Modulated Parameter</td>
+                                    <td class="p-3 border-b border-gray-200">Pulse Width (Duration)</td>
+                                    <td class="p-3 border-b border-gray-200">Pulse Amplitude (Height)</td>
+                                    <td class="p-3 border-b border-gray-200">Pulse Position (Timing)</td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-3 border-b border-gray-200 font-medium">Noise Immunity</td>
+                                    <td class="p-3 border-b border-gray-200">Good (Amplitude is fixed)</td>
+                                    <td class="p-3 border-b border-gray-200">Fair (Amplitude noise directly corrupts signal)</td>
+                                    <td class="p-3 border-b border-gray-200">Very Good (Amplitude is fixed)</td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-3 border-b border-gray-200 font-medium">Power Efficiency (Tx)</td>
+                                    <td class="p-3 border-b border-gray-200">High (Switches are ON/OFF)</td>
+                                    <td class="p-3 border-b border-gray-200">Low (Requires linear amplification)</td>
+                                    <td class="p-3 border-b border-gray-200">High (Pulses have constant amplitude)</td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-3 border-b border-gray-200 font-medium">Primary Use Case</td>
+                                    <td class="p-3 border-b border-gray-200">Power control, motor drives</td>
+                                    <td class="p-3 border-b border-gray-200">Signal transmission</td>
+                                    <td class="p-3 border-b border-gray-200">Optical communication, R/C</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer class="text-center mt-12 py-6 border-t border-gray-200 text-sm text-gray-500">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p>Part of the Neurophasia Archive</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const V_SUPPLY = 5.0;
+            let pwmChart;
+
+            const dutyCycleSlider = document.getElementById('dutyCycleSlider');
+            const frequencySlider = document.getElementById('frequencySlider');
+            const dutyCycleValue = document.getElementById('dutyCycleValue');
+            const frequencyValue = document.getElementById('frequencyValue');
+            const avgVoltageDisplay = document.getElementById('avgVoltageDisplay');
+
+            function generatePwmData(dutyCycle, frequency) {
+                const period = 1 / frequency;
+                const onTime = period * (dutyCycle / 100);
+                const samples = 400;
+                const totalTime = period * 2;
+                const timeStep = totalTime / samples;
+
+                const data = [];
+                const labels = [];
+                for (let i = 0; i <= samples; i++) {
+                    const t = i * timeStep;
+                    labels.push(t * 1000); 
+                    const t_in_period = t % period;
+                    data.push(t_in_period < onTime ? V_SUPPLY : 0);
+                }
+                return { labels, data };
+            }
+            
+            function updateChart() {
+                const duty = parseInt(dutyCycleSlider.value);
+                const freq = parseInt(frequencySlider.value);
+                
+                dutyCycleValue.textContent = `${duty}%`;
+                frequencyValue.textContent = `${freq} Hz`;
+
+                const avgVoltage = V_SUPPLY * (duty / 100);
+                avgVoltageDisplay.textContent = `${avgVoltage.toFixed(2)} V`;
+
+                const { labels, data } = generatePwmData(duty, freq);
+                
+                pwmChart.data.labels = labels;
+                pwmChart.data.datasets[0].data = data;
+                
+                const periodMs = (1 / freq) * 1000;
+                pwmChart.options.scales.x.max = periodMs * 2;
+
+                pwmChart.update('none');
+            }
+
+            function initPwmChart() {
+                const ctx = document.getElementById('pwmChart').getContext('2d');
+                const duty = parseInt(dutyCycleSlider.value);
+                const freq = parseInt(frequencySlider.value);
+                const { labels, data } = generatePwmData(duty, freq);
+                const periodMs = (1 / freq) * 1000;
+                
+                pwmChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'PWM Signal',
+                            data: data,
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            stepped: true,
+                            fill: true,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 0
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: V_SUPPLY * 1.2,
+                                title: {
+                                    display: true,
+                                    text: 'Voltage (V)'
+                                }
+                            },
+                            x: {
+                                type: 'linear',
+                                min: 0,
+                                max: periodMs * 2,
+                                title: {
+                                    display: true,
+                                    text: 'Time (ms)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                enabled: false
+                            }
+                        }
+                    }
+                });
+            }
+            
+            dutyCycleSlider.addEventListener('input', updateChart);
+            frequencySlider.addEventListener('input', updateChart);
+
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.target;
+
+                    navButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    contentSections.forEach(section => {
+                        section.classList.toggle('active', section.id === targetId);
+                    });
+                });
+            });
+
+            const ledSlider = document.getElementById('ledSlider');
+            const ledDemo = document.getElementById('ledDemo');
+            const ledValue = document.getElementById('ledValue');
+            ledSlider.addEventListener('input', () => {
+                const brightness = ledSlider.value;
+                ledValue.textContent = `${brightness}%`;
+                ledDemo.style.opacity = brightness / 100;
+                const shadowIntensity = (brightness / 100) * 20;
+                ledDemo.style.boxShadow = `0 0 ${shadowIntensity}px ${shadowIntensity/2}px rgba(245, 158, 11, 0.7)`;
+            });
+            
+            let motorInterval;
+            let motorSpeed = 15;
+            let rotation = 0;
+            const fanBlades = document.querySelectorAll('.motor-fan .fan-blade');
+            
+            function runMotor() {
+                clearInterval(motorInterval);
+                motorInterval = setInterval(() => {
+                    rotation += 10;
+                    fanBlades.forEach((blade, index) => {
+                       blade.style.transform = `rotate(${rotation + index * 90}deg)`;
+                    });
+                }, motorSpeed);
+            }
+
+            document.getElementById('motorSlow').addEventListener('click', (e) => { motorSpeed = 30; runMotor(); updateMotorButtons(e.target); });
+            document.getElementById('motorMedium').addEventListener('click', (e) => { motorSpeed = 15; runMotor(); updateMotorButtons(e.target); });
+            document.getElementById('motorFast').addEventListener('click', (e) => { motorSpeed = 5; runMotor(); updateMotorButtons(e.target); });
+
+            function updateMotorButtons(activeButton) {
+                document.querySelectorAll('#motorSlow, #motorMedium, #motorFast').forEach(btn => {
+                    btn.classList.remove('bg-blue-500', 'text-white');
+                    btn.classList.add('bg-gray-200');
+                });
+                activeButton.classList.add('bg-blue-500', 'text-white');
+                activeButton.classList.remove('bg-gray-200');
+            }
+
+            function drawAnalogGen() {
+                const canvas = document.getElementById('analogGenCanvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                const w = canvas.width;
+                const h = canvas.height;
+
+                if (w === 0 || h === 0) return;
+                
+                ctx.clearRect(0,0,w,h);
+                ctx.font = '12px Inter';
+
+                ctx.beginPath();
+                ctx.strokeStyle = '#F59E0B';
+                ctx.lineWidth = 2;
+                for(let i=0; i<3; i++) {
+                    ctx.moveTo(w/3 * i, h*0.9);
+                    ctx.lineTo(w/3 * (i+1), h*0.1);
+                }
+                ctx.stroke();
+                ctx.fillStyle = '#475569';
+                ctx.fillText('Carrier (Sawtooth)', 5, 15);
+
+                const modLevel = h * 0.4;
+                ctx.beginPath();
+                ctx.strokeStyle = '#3B82F6';
+                ctx.lineWidth = 2;
+                ctx.moveTo(0, modLevel);
+                ctx.lineTo(w, modLevel);
+                ctx.stroke();
+                ctx.fillStyle = '#475569';
+                ctx.fillText('Modulating Signal', 5, modLevel - 5);
+
+                ctx.beginPath();
+                ctx.strokeStyle = '#1E293B';
+                ctx.lineWidth = 3;
+                let y_pwm = h * 0.85;
+                let lastState = -1;
+                for(let i=0; i<w; i++){
+                    let carrierY = h*0.9 - ((i*3/w) % 1) * (h*0.8);
+                    let currentState = modLevel > carrierY;
+                    if (lastState === -1) {
+                         ctx.moveTo(i, currentState ? y_pwm : y_pwm + 10);
+                    } else if (currentState !== lastState) {
+                        ctx.lineTo(i, lastState ? y_pwm : y_pwm + 10);
+                        ctx.moveTo(i, currentState ? y_pwm : y_pwm + 10);
+                    }
+                     if (i === w - 1) {
+                         ctx.lineTo(i, currentState ? y_pwm : y_pwm + 10);
+                     }
+                    lastState = currentState;
+                }
+                ctx.stroke();
+                ctx.fillStyle = '#1E293B';
+                ctx.fillText('PWM Output', 5, y_pwm - 10);
+            }
+            
+            function animateDigitalGen() {
+                const counterSpan = document.getElementById('digitalCounter');
+                const outputDiv = document.getElementById('digitalOutput');
+                const stateSpan = document.getElementById('digitalState');
+                const compareValue = 75;
+                const period = 100;
+                let count = 0;
+                setInterval(() => {
+                    count = (count + 1) % (period + 1);
+                    counterSpan.textContent = count;
+                    if(count < compareValue) {
+                        stateSpan.textContent = 'HIGH';
+                        outputDiv.classList.remove('bg-gray-400');
+                        outputDiv.classList.add('bg-blue-500');
+                    } else {
+                        stateSpan.textContent = 'LOW';
+                        outputDiv.classList.remove('bg-blue-500');
+                        outputDiv.classList.add('bg-gray-400');
+                    }
+                }, 40);
+            }
+
+            function drawAudioGen() {
+                 const canvas = document.getElementById('audioCanvas');
+                 if (!canvas) return;
+                 const ctx = canvas.getContext('2d');
+                 canvas.width = canvas.offsetWidth;
+                 canvas.height = canvas.offsetHeight;
+                 const w = canvas.width;
+                 const h = canvas.height;
+                 if (w === 0 || h === 0) return;
+
+                 ctx.clearRect(0, 0, w, h);
+                 
+                 const sineAmplitude = h * 0.3;
+                 const sineOffset = h * 0.5;
+
+                 ctx.beginPath();
+                 ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+                 ctx.lineWidth = 2;
+                 for (let x = 0; x < w; x++) {
+                    const y = sineOffset - Math.sin(x * Math.PI * 4 / w) * sineAmplitude;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                 }
+                 ctx.stroke();
+
+                 ctx.beginPath();
+                 ctx.strokeStyle = '#1E293B';
+                 ctx.lineWidth = 1.5;
+                 let lastY = -1;
+                 for (let x = 0; x < w; x+=4) {
+                    const sineVal = Math.sin(x * Math.PI * 4 / w);
+                    const dutyCycle = (sineVal + 1) / 2;
+                    let y = h * 0.9;
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + 4 * dutyCycle, y);
+                    ctx.moveTo(x + 4 * dutyCycle, y + 5);
+                    ctx.lineTo(x+4, y + 5);
+                 }
+                 ctx.stroke();
+            }
+
+            initPwmChart();
+            updateChart();
+            drawAnalogGen();
+            animateDigitalGen();
+            runMotor();
+            drawAudioGen();
+            
+            window.addEventListener('resize', () => {
+                drawAnalogGen();
+                drawAudioGen();
+            });
+
+            const observer = new MutationObserver((mutationsList) => {
+                for(const mutation of mutationsList) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                        if (mutation.target.classList.contains('active')) {
+                            if (mutation.target.id === 'generation') drawAnalogGen();
+                            if (mutation.target.id === 'applications') drawAudioGen();
+                        }
+                    }
+                }
+            });
+            contentSections.forEach(section => {
+                observer.observe(section, { attributes: true });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCM - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Neutral & Sky (Background: #F8FAFC, Text: #27272A, Primary Accent: #0369A1, Secondary Accent: #0D9488) -->
+    <!-- Application Structure Plan: The application transforms the linear report into a user-centric, interactive experience. It uses a sticky top navigation to guide users through five thematic sections: 'Overview' (the what and why), 'The Process' (an interactive visualization of how PCM works), 'Variants & Comparisons' (a comparative analysis of different PCM types and other modulations), 'Applications' (real-world uses), and 'Technical Deep Dive' (for detailed components and performance). This non-linear structure allows users to explore topics based on their interest and prior knowledge, fostering better comprehension and engagement than a simple text document. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Core PCM process (Sampling, Quantization, Encoding) -> Goal: Explain the core mechanism -> Viz/Presentation: Interactive HTML/Canvas diagram -> Interaction: Step-by-step buttons (Sample, Quantize, Encode) update the visual and explanatory text -> Justification: Active, hands-on learning is more effective for understanding a technical process than passive reading. -> Library/Method: Vanilla JS, HTML, CSS, Canvas API.
+        - Report Info: PCM vs DPCM vs ADPCM -> Goal: Compare efficiency and complexity -> Viz/Presentation: Bar chart -> Interaction: Static chart for clear comparison -> Justification: A bar chart provides an immediate, clear visual comparison of quantitative trade-offs (Bandwidth, Complexity, Quality). -> Library/Method: Chart.js.
+        - Report Info: G.711 Companding (A-law/μ-law) -> Goal: Explain non-uniform quantization in telephony -> Viz/Presentation: Line chart -> Interaction: Buttons to switch between A-law and µ-law curves -> Justification: Visually demonstrates the logarithmic relationship central to optimizing voice quality in telephony PCM. -> Library/Method: Chart.js.
+        - Report Info: PCM System Components -> Goal: Explain the full system architecture -> Viz/Presentation: HTML/CSS flexbox diagram -> Interaction: Click on a component block to reveal a detailed explanation -> Justification: Breaks down a complex system into understandable, interactive parts, encouraging exploration. -> Library/Method: Vanilla JS, HTML, Tailwind CSS.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .nav-link { transition: all 0.3s ease; }
+        .nav-link.active { color: #0369A1; border-bottom-color: #0369A1; font-weight: 600; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .interactive-diagram-step { opacity: 0.3; transition: opacity 0.5s ease; }
+        .interactive-diagram-step.active { opacity: 1; }
+    </style>
+</head>
+<body class="bg-slate-50 text-zinc-800">
+
+    <div id="app-container" class="min-h-screen flex flex-col">
+        
+        <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+            <div class="container mx-auto px-4">
+                <div class="flex justify-between items-center py-4 border-b border-slate-200">
+                    <a href="https://neurophasia.com" class="text-2xl font-bold text-slate-800 hover:text-sky-700 transition-colors">Neurophasia</a>
+                </div>
+                <nav id="main-nav" class="flex space-x-4 sm:space-x-8 -mb-px">
+                    <a href="#overview" class="nav-link py-3 border-b-2 border-transparent text-slate-600 hover:text-sky-700 hover:border-sky-700">Overview</a>
+                    <a href="#process" class="nav-link py-3 border-b-2 border-transparent text-slate-600 hover:text-sky-700 hover:border-sky-700">The Process</a>
+                    <a href="#variants" class="nav-link py-3 border-b-2 border-transparent text-slate-600 hover:text-sky-700 hover:border-sky-700">Variants & Comparisons</a>
+                    <a href="#applications" class="nav-link py-3 border-b-2 border-transparent text-slate-600 hover:text-sky-700 hover:border-sky-700">Applications</a>
+                    <a href="#deep-dive" class="nav-link py-3 border-b-2 border-transparent text-slate-600 hover:text-sky-700 hover:border-sky-700">Technical Deep Dive</a>
+                </nav>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-4 sm:p-8 flex-grow">
+            
+            <section id="overview" class="content-section space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-800 mb-4">What is Pulse Code Modulation?</h2>
+                    <p class="text-lg text-slate-700 mb-4">Pulse Code Modulation (PCM) is the foundational method for converting analog signals, like sound waves or video, into a digital format. It represents an analog signal as a series of binary numbers (0s and 1s). This is achieved by measuring (sampling) the signal's amplitude at regular intervals, rounding each measurement to a specific level (quantization), and then assigning a unique binary code to that level (encoding). PCM is the standard for uncompressed digital audio in systems like CDs, computers, and digital telephony.</p>
+                    <p class="text-slate-600">This digital representation allows information to be transmitted, stored, and processed with high fidelity and remarkable resistance to noise, forming the bedrock of modern digital communication.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-3">The Analog Problem</h3>
+                        <p class="text-slate-600">Before PCM, analog systems were plagued by noise. Every time a signal was transmitted or amplified over long distances, noise was added and amplified along with it. This led to a steady degradation of quality that was impossible to reverse. Imagine a photocopy of a photocopy—each generation gets worse. This fundamental limitation made high-fidelity, long-distance communication extremely difficult.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-3">PCM's Revolutionary Solution</h3>
+                        <p class="text-slate-600">PCM, invented by Alec Reeves in 1937, solved the noise problem. By converting the signal to binary, it could be perfectly reconstructed by <strong class="font-semibold text-teal-800">regenerative repeaters</strong> along a transmission path. These repeaters don't just amplify the signal; they read the noisy 0s and 1s and generate a fresh, clean, perfectly-timed copy. This breaks the chain of noise accumulation, allowing signals to travel vast distances with virtually no loss in quality, paving the way for the digital age.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="process" class="content-section space-y-6">
+                 <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-800 mb-2">How PCM Works: An Interactive Guide</h2>
+                    <p class="text-slate-600 mb-6">This section provides an interactive walkthrough of the three core steps of Pulse Code Modulation. Click the buttons below to see how a continuous analog signal is transformed into a robust digital stream. The diagram and explanations will update with each step.</p>
+                    
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="w-full md:w-2/3">
+                            <div id="interactive-diagram-container" class="relative bg-slate-100 rounded-lg p-4 h-80">
+                                <canvas id="analog-wave-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                <div id="diagram-elements" class="absolute top-0 left-0 w-full h-full"></div>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-1/3 space-y-4">
+                            <div id="pcm-controls" class="flex flex-col space-y-3">
+                                <button id="sample-btn" class="w-full bg-sky-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-sky-700 transition-colors">1. Sample</button>
+                                <button id="quantize-btn" class="w-full bg-slate-400 text-white font-semibold py-2 px-4 rounded-lg cursor-not-allowed">2. Quantize</button>
+                                <button id="encode-btn" class="w-full bg-slate-400 text-white font-semibold py-2 px-4 rounded-lg cursor-not-allowed">3. Encode</button>
+                            </div>
+                            <div id="explanation-box" class="bg-slate-100 p-4 rounded-lg min-h-[150px]">
+                                <h3 id="explanation-title" class="font-bold text-lg text-slate-800">Start the process</h3>
+                                <p id="explanation-text" class="text-slate-600 mt-2">Click the "Sample" button to begin the conversion process.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="variants" class="content-section space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-800 mb-2">Variants & Comparisons</h2>
+                    <p class="text-slate-600 mb-6">While standard Linear PCM (LPCM) offers the highest fidelity, its large bandwidth needs led to the development of more efficient variants. This section compares LPCM, DPCM, and ADPCM, and contrasts PCM with other modulation techniques.</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-2xl font-bold text-teal-700 mb-4">PCM Family Comparison</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <h4 class="font-semibold text-lg">Linear PCM (LPCM)</h4>
+                                    <p class="text-slate-600">The "raw" form. Encodes the absolute value of each sample. Offers the highest fidelity but requires the most bandwidth. Used for CDs and professional audio.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Differential PCM (DPCM)</h4>
+                                    <p class="text-slate-600">Improves efficiency by encoding the <strong class="font-semibold text-teal-800">difference</strong> between the current sample and a prediction. Works well for signals where consecutive samples are similar, like speech.</p>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-lg">Adaptive DPCM (ADPCM)</h4>
+                                    <p class="text-slate-600">A smarter DPCM. It <strong class="font-semibold text-teal-800">adapts</strong> its step size and prediction based on the signal's characteristics, offering even better compression. Widely used in telephony.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-teal-700 mb-4">Trade-offs at a Glance</h3>
+                            <div class="chart-container">
+                                <canvas id="variants-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-2xl font-bold text-teal-700 mb-4">PCM vs. Other Modulations</h3>
+                    <p class="text-slate-600 mb-4">The key difference between PCM and analog pulse techniques (like PAM, PWM) is that PCM is truly digital—it involves quantization and binary encoding, providing superior noise immunity and the ability to be perfectly regenerated.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    <th class="py-2 px-3 bg-slate-100 font-semibold text-sm text-slate-600 border-b-2 border-slate-200">Technique</th>
+                                    <th class="py-2 px-3 bg-slate-100 font-semibold text-sm text-slate-600 border-b-2 border-slate-200">Signal Nature</th>
+                                    <th class="py-2 px-3 bg-slate-100 font-semibold text-sm text-slate-600 border-b-2 border-slate-200">Key Advantage</th>
+                                    <th class="py-2 px-3 bg-slate-100 font-semibold text-sm text-slate-600 border-b-2 border-slate-200">Key Disadvantage</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-slate-700">
+                                <tr class="bg-sky-50">
+                                    <td class="py-2 px-3 border-b border-slate-200 font-semibold">PCM</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Digital (Quantized & Coded)</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">High noise immunity, regeneration</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Large bandwidth</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 border-b border-slate-200 font-semibold">PAM</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Analog (Continuous Amplitude)</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Simple implementation</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Poor noise immunity</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 border-b border-slate-200 font-semibold">PWM</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Analog (Continuous Width)</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Good noise immunity, power control</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Requires more bandwidth than PAM</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 border-b border-slate-200 font-semibold">Delta Modulation (DM)</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Digital (1-bit difference)</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Very simple, low bandwidth</td>
+                                    <td class="py-2 px-3 border-b border-slate-200">Slope overload, lower quality</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="applications" class="content-section space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-800 mb-2">PCM in the Real World</h2>
+                    <p class="text-slate-600 mb-6">PCM is not just a theory; it's a foundational technology that powers systems we use every day. From phone calls to music listening, its impact is everywhere.</p>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-3">Digital Telephony (G.711)</h3>
+                        <p class="text-slate-600 mb-4">The global telephone network relies on the G.711 standard, a form of PCM. It digitizes voice at 64 kbps (8000 samples/sec at 8 bits/sample). A key feature is <strong class="font-semibold text-teal-800">companding</strong> (A-law or µ-law), a type of non-uniform quantization. It uses more resolution for quiet sounds and less for loud sounds, which is ideal for the dynamic range of human speech and improves perceived quality.</p>
+                        <div class="mt-4">
+                            <h4 class="text-lg font-semibold text-sky-700 mb-2 text-center">Companding Curve</h4>
+                            <div class="chart-container h-64 md:h-72">
+                                <canvas id="alaw-chart"></canvas>
+                            </div>
+                            <p class="text-sm text-slate-600 mt-2 text-center italic">
+                                The S-shaped curve shows how companding provides more resolution for quiet signals (near zero) and less for loud signals
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-3">High-Fidelity Audio (CDs)</h3>
+                        <p class="text-slate-600 mb-4">The audio on Compact Discs is encoded using LPCM. The "Red Book" standard specifies uncompressed, high-quality stereo audio with the following parameters:</p>
+                        <ul class="space-y-2 text-slate-700">
+                            <li class="flex items-center"><span class="text-sky-600 mr-2">&#11162;</span> <strong class="font-semibold w-32">Sampling Rate:</strong> 44,100 Hz</li>
+                            <li class="flex items-center"><span class="text-sky-600 mr-2">&#11162;</span> <strong class="font-semibold w-32">Bit Depth:</strong> 16 bits per sample</li>
+                            <li class="flex items-center"><span class="text-sky-600 mr-2">&#11162;</span> <strong class="font-semibold w-32">Channels:</strong> 2 (Stereo)</li>
+                        </ul>
+                        <p class="text-slate-600 mt-4">This results in a constant data rate of ~1.4 Mbps, ensuring a perfect, uncompressed representation of the original studio master. It's the benchmark for high-quality consumer audio.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-3">Digital Video Systems</h3>
+                        <p class="text-slate-600">PCM is the backbone for audio in most digital video formats. Standards like DVD, Blu-ray, and interfaces like HDMI all mandate support for LPCM audio tracks. This ensures that the high-definition picture is accompanied by uncompressed, high-fidelity sound.</p>
+                        <p class="text-slate-600 mt-4">Historically, the first digital audio recorders were actually <strong class="font-semibold text-teal-800">PCM adapters</strong> connected to VCRs, as video tape was the only medium with enough bandwidth to store the digital audio data required for the first CDs.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="deep-dive" class="content-section space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-800 mb-2">Technical Deep Dive</h2>
+                    <p class="text-slate-600 mb-6">Explore the technical components, performance characteristics, and future outlook for PCM technology.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                     <h3 class="text-2xl font-bold text-teal-700 mb-4">PCM System Architecture</h3>
+                     <p class="text-slate-600 mb-6">A complete PCM system consists of a transmitter, a transmission path (with repeaters), and a receiver. Click on each component in the diagram below to learn about its specific role in the process.</p>
+                     <div id="system-diagram" class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+                        <div data-target="desc-tx" class="system-component text-center p-4 bg-slate-100 rounded-lg border-2 border-transparent hover:border-sky-500 cursor-pointer transition-all w-full md:w-1/3">
+                            <h4 class="font-bold">Transmitter (ADC)</h4>
+                            <p class="text-sm text-slate-500">Analog to Digital</p>
+                        </div>
+                        <div class="text-5xl text-slate-400 font-thin hidden md:block">&rarr;</div>
+                        <div data-target="desc-path" class="system-component text-center p-4 bg-slate-100 rounded-lg border-2 border-transparent hover:border-sky-500 cursor-pointer transition-all w-full md:w-1/3">
+                            <h4 class="font-bold">Transmission Path</h4>
+                            <p class="text-sm text-slate-500">Regenerative Repeaters</p>
+                        </div>
+                         <div class="text-5xl text-slate-400 font-thin hidden md:block">&rarr;</div>
+                        <div data-target="desc-rx" class="system-component text-center p-4 bg-slate-100 rounded-lg border-2 border-transparent hover:border-sky-500 cursor-pointer transition-all w-full md:w-1/3">
+                             <h4 class="font-bold">Receiver (DAC)</h4>
+                            <p class="text-sm text-slate-500">Digital to Analog</p>
+                        </div>
+                     </div>
+                     <div id="system-descriptions" class="mt-6 bg-slate-100 p-4 rounded-lg">
+                        <div id="desc-initial" class="system-desc">
+                            <p class="text-slate-700">Click a component above for a description.</p>
+                        </div>
+                        <div id="desc-tx" class="system-desc hidden space-y-2">
+                             <h4 class="font-semibold text-lg text-slate-800">Transmitter (Analog-to-Digital Converter)</h4>
+                             <p class="text-slate-600">The transmitter converts the analog signal into a digital PCM stream. It includes an <strong class="font-semibold">anti-aliasing filter</strong> to remove unwanted high frequencies, a <strong class="font-semibold">sampler</strong> to take discrete measurements, a <strong class="font-semibold">quantizer</strong> to round the measurements to defined levels, and an <strong class="font-semibold">encoder</strong> to assign binary codes.</p>
+                        </div>
+                        <div id="desc-path" class="system-desc hidden space-y-2">
+                             <h4 class="font-semibold text-lg text-slate-800">Transmission Path</h4>
+                             <p class="text-slate-600">For long distances, the signal is sent through a series of <strong class="font-semibold">regenerative repeaters</strong>. These are the key to PCM's noise immunity. Instead of just amplifying a degraded signal (and its noise), each repeater reads the binary data and generates a brand new, clean, and perfectly timed signal to send to the next repeater, effectively eliminating noise accumulation.</p>
+                        </div>
+                        <div id="desc-rx" class="system-desc hidden space-y-2">
+                             <h4 class="font-semibold text-lg text-slate-800">Receiver (Digital-to-Analog Converter)</h4>
+                             <p class="text-slate-600">The receiver reverses the process. A <strong class="font-semibold">decoder</strong> converts the binary codes back into quantized amplitude levels. Then, a <strong class="font-semibold">reconstruction filter</strong> (a low-pass filter) smooths out the "staircase" signal to recreate the original continuous analog waveform, which is then sent to a speaker or display.</p>
+                        </div>
+                     </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-teal-700 mb-3">Advantages of PCM</h3>
+                        <ul class="space-y-2 text-slate-700">
+                             <li class="flex"><strong class="font-semibold text-sky-700 w-8 text-center">&#10003;</strong><div><strong class="font-semibold">High Noise Immunity:</strong> Largely unaffected by noise below a certain threshold.</div></li>
+                             <li class="flex"><strong class="font-semibold text-sky-700 w-8 text-center">&#10003;</strong><div><strong class="font-semibold">Signal Regeneration:</strong> Can be perfectly regenerated over long distances.</div></li>
+                             <li class="flex"><strong class="font-semibold text-sky-700 w-8 text-center">&#10003;</strong><div><strong class="font-semibold">High Fidelity:</strong> Can achieve extremely accurate signal representation.</div></li>
+                             <li class="flex"><strong class="font-semibold text-sky-700 w-8 text-center">&#10003;</strong><div><strong class="font-semibold">Digital Processing:</strong> Easily processed and manipulated by computers.</div></li>
+                             <li class="flex"><strong class="font-semibold text-sky-700 w-8 text-center">&#10003;</strong><div><strong class="font-semibold">Secure:</strong> Can be easily encrypted for secure communication.</div></li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-2xl font-bold text-red-700 mb-3">Disadvantages of PCM</h3>
+                        <ul class="space-y-2 text-slate-700">
+                             <li class="flex"><strong class="font-semibold text-red-600 w-8 text-center">&#10007;</strong><div><strong class="font-semibold">Large Bandwidth:</strong> Uncompressed PCM requires significantly more bandwidth than the original analog signal.</div></li>
+                             <li class="flex"><strong class="font-semibold text-red-600 w-8 text-center">&#10007;</strong><div><strong class="font-semibold">System Complexity:</strong> Requires ADC and DAC circuitry, which can be complex.</div></li>
+                             <li class="flex"><strong class="font-semibold text-red-600 w-8 text-center">&#10007;</strong><div><strong class="font-semibold">Quantization Noise:</strong> An inherent error is introduced when rounding continuous values to discrete levels.</div></li>
+                             <li class="flex"><strong class="font-semibold text-red-600 w-8 text-center">&#10007;</strong><div><strong class="font-semibold">"Digital Cliff":</strong> Signal quality drops off catastrophically if noise exceeds the system's threshold.</div></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-2xl font-bold text-teal-700 mb-3">The Future of PCM</h3>
+                    <p class="text-slate-600">Despite its age, PCM remains critically relevant. While advanced codecs (like MP3, AAC) are used for distribution to save bandwidth, LPCM is still the gold standard for <strong class="font-semibold">professional audio capture, production, and archival</strong>. It serves as the pristine "ground truth" from which all other compressed formats are created. Its future lies in its role as an indispensable, high-quality building block in an increasingly complex digital world, from ensuring interoperability in 5G voice calls to capturing high-resolution sensor data in the Internet of Things.</p>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="bg-slate-800 text-slate-400 text-sm text-center py-4 mt-8">
+            <div class="container mx-auto">
+                <p>&copy; 2025 Neurophasia.com</p>
+                <p>Part of the Neurophasia Archive</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Global State & Element References ---
+            const navLinks = document.querySelectorAll('#main-nav a');
+            const contentSections = document.querySelectorAll('.content-section');
+            
+            // --- Chart variables ---
+            let variantsChart = null;
+            let alawChart = null;
+            
+            // --- PCM Process simulation variables ---
+            const analogWaveCanvas = document.getElementById('analog-wave-canvas');
+            let pcmStep = 0;
+            const pcmControlsContainer = document.getElementById('pcm-controls');
+            const sampleBtn = document.getElementById('sample-btn');
+            const quantizeBtn = document.getElementById('quantize-btn');
+            const encodeBtn = document.getElementById('encode-btn');
+            const explanationTitle = document.getElementById('explanation-title');
+            const explanationText = document.getElementById('explanation-text');
+            const diagramContainer = document.getElementById('diagram-elements');
+            
+            // --- Companding Chart Data ---
+            const aLaw = (x) => {
+                const A = 87.6; const ax = Math.abs(x);
+                if (ax < 1/A) return Math.sign(x) * (A * ax) / (1 + Math.log(A));
+                else return Math.sign(x) * (1 + Math.log(A * ax)) / (1 + Math.log(A));
+            };
+            const muLaw = (x) => {
+                const mu = 255;
+                return Math.sign(x) * Math.log(1 + mu * Math.abs(x)) / Math.log(1 + mu);
+            };
+            // Higher resolution for better visualization of differences
+            const compandingLabels = Array.from({length: 81}, (_, i) => ((i - 40) / 40).toFixed(2));
+            const aLawData = compandingLabels.map(l => aLaw(parseFloat(l)));
+            const muLawData = compandingLabels.map(l => muLaw(parseFloat(l)));
+            const differenceData = aLawData.map((a, i) => a - muLawData[i]);
+
+
+            // --- Core Navigation Logic ---
+            function setActiveSection(hash) {
+                const targetHash = hash || window.location.hash || '#overview';
+                
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.hash === targetHash);
+                });
+
+                contentSections.forEach(section => {
+                    if (`#${section.id}` === targetHash) {
+                        section.style.display = 'block';
+                    } else {
+                        section.style.display = 'none';
+                    }
+                });
+
+                // --- Lazy-load visualizations based on active section ---
+                switch (targetHash) {
+                    case '#process':
+                        setTimeout(drawAnalogWave, 50);
+                        break;
+                    case '#variants':
+                        initVariantsChart();
+                        break;
+                    case '#applications':
+                        initCompandingChart();
+                        break;
+                }
+            }
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.history.pushState(null, '', e.target.hash);
+                    setActiveSection(e.target.hash);
+                });
+            });
+
+            window.addEventListener('popstate', () => setActiveSection(window.location.hash));
+            
+            // --- Chart Initialization Functions (Lazy Loading) ---
+            function initVariantsChart() {
+                if (variantsChart) return;
+                const ctx = document.getElementById('variants-chart').getContext('2d');
+                variantsChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['LPCM', 'DPCM', 'ADPCM'],
+                        datasets: [{
+                            label: 'Relative Bandwidth',
+                            data: [100, 60, 40],
+                            backgroundColor: 'rgba(3, 105, 161, 0.7)',
+                            borderColor: 'rgba(3, 105, 161, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'Relative Complexity',
+                            data: [20, 50, 80],
+                            backgroundColor: 'rgba(13, 148, 136, 0.7)',
+                            borderColor: 'rgba(13, 148, 136, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, max: 100 } },
+                        plugins: { title: { display: true, text: 'PCM Variants: Bandwidth vs. Complexity' } }
+                    }
+                });
+            }
+
+            function initCompandingChart() {
+                if (alawChart) return;
+                
+                const alawCtx = document.getElementById('alaw-chart').getContext('2d');
+                alawChart = new Chart(alawCtx, {
+                    type: 'line',
+                    data: {
+                        labels: compandingLabels,
+                        datasets: [{
+                            label: 'Companding Output',
+                            data: aLawData,
+                            borderColor: 'rgba(3, 105, 161, 1)',
+                            backgroundColor: 'rgba(3, 105, 161, 0.1)',
+                            borderWidth: 3, pointRadius: 0, tension: 0.1,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { 
+                            legend: { display: false },
+                            title: { display: false }
+                        },
+                        scales: {
+                            x: { 
+                                title: { display: true, text: 'Linear Input Signal', font: { size: 14, weight: 'bold' } },
+                                ticks: { maxTicksLimit: 7 }
+                            },
+                            y: { 
+                                title: { display: true, text: 'Compressed Output', font: { size: 14, weight: 'bold' } }
+                            }
+                        }
+                    }
+                });
+            }
+            
+
+
+
+            // --- Interactive PCM Process Simulation Functions ---
+            function drawAnalogWave() {
+                const canvas = analogWaveCanvas;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+
+                if (rect.width === 0 || rect.height === 0) return;
+
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+                
+                const w = canvas.width / dpr;
+                const h = canvas.height / dpr;
+                
+                ctx.clearRect(0, 0, w, h);
+                ctx.beginPath();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#0ea5e9';
+                ctx.shadowColor = 'rgba(14, 165, 233, 0.4)';
+                ctx.shadowBlur = 8;
+
+                for (let x = 0; x < w; x++) {
+                    const y = h / 2 + (h / 2 - 20) * Math.sin(x * 2.5 * Math.PI / w);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.shadowColor = 'transparent';
+            }
+            
+            function calculateSamplePoints(numSamples) {
+                const w = analogWaveCanvas.offsetWidth;
+                const h = analogWaveCanvas.offsetHeight;
+                const points = [];
+                for(let i=0; i < numSamples; i++) {
+                    const x = (w / numSamples) * (i + 0.5);
+                    const y = h / 2 + (h / 2 - 20) * Math.sin(x * 2.5 * Math.PI / w);
+                    points.push({x, y});
+                }
+                return points;
+            }
+
+            function updateExplanation(title, text) {
+                explanationTitle.textContent = title;
+                explanationText.textContent = text;
+            }
+
+            function setButtonState(step) {
+                sampleBtn.disabled = step !== 0;
+                quantizeBtn.disabled = step !== 1;
+                encodeBtn.disabled = step !== 2;
+
+                sampleBtn.className = `w-full font-semibold py-2 px-4 rounded-lg transition-colors ${step === 0 ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-400 text-white cursor-not-allowed'}`;
+                quantizeBtn.className = `w-full font-semibold py-2 px-4 rounded-lg transition-colors ${step === 1 ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-400 text-white cursor-not-allowed'}`;
+                encodeBtn.className = `w-full font-semibold py-2 px-4 rounded-lg transition-colors ${step === 2 ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-400 text-white cursor-not-allowed'}`;
+            }
+
+            sampleBtn.addEventListener('click', () => {
+                if (pcmStep !== 0) return;
+                pcmStep = 1;
+                setButtonState(pcmStep);
+                updateExplanation('1. Sampling', 'The continuous analog wave is measured at regular intervals. Each measurement, or "sample," captures the signal\'s amplitude at a specific moment in time.');
+                let html = '';
+                const points = calculateSamplePoints(16);
+                points.forEach(p => {
+                     html += `<div class="absolute w-2 h-2 bg-red-500 rounded-full" style="left: ${p.x-4}px; top: ${p.y-4}px; transform: scale(0);" data-type="sample-dot"></div>`;
+                     html += `<div class="absolute h-full border-l border-dashed border-slate-300" style="left: ${p.x}px; top: 0; transform: scaleY(0); transform-origin: top;" data-type="sample-line"></div>`;
+                });
+                diagramContainer.innerHTML = html;
+                document.querySelectorAll('[data-type="sample-dot"]').forEach((dot, i) => setTimeout(() => dot.style.transform = 'scale(1)', i * 50));
+                document.querySelectorAll('[data-type="sample-line"]').forEach((line, i) => setTimeout(() => line.style.transform = 'scaleY(1)', i * 50));
+            });
+            
+            const numLevels = 8;
+            quantizeBtn.addEventListener('click', () => {
+                if (pcmStep !== 1) return;
+                pcmStep = 2;
+                setButtonState(pcmStep);
+                updateExplanation('2. Quantization', 'The amplitude of each sample is rounded to the nearest of a finite set of discrete levels. This process introduces a small "quantization error."');
+                let html = diagramContainer.innerHTML;
+                const h = analogWaveCanvas.offsetHeight;
+                const levelHeight = h / numLevels;
+                for (let i = 0; i <= numLevels; i++) {
+                    html += `<div class="absolute w-full border-t border-dashed border-teal-500/50" style="top: ${i * levelHeight}px; transform: scaleX(0); transform-origin: left;" data-type="quant-line"></div>`;
+                }
+                diagramContainer.innerHTML = html;
+                document.querySelectorAll('[data-type="quant-line"]').forEach((line, i) => setTimeout(() => line.style.transform = 'scaleX(1)', i * 50));
+                document.querySelectorAll('[data-type="sample-dot"]').forEach(dot => {
+                    const originalTop = parseFloat(dot.style.top);
+                    const quantizedLevel = Math.round(originalTop / levelHeight);
+                    const newTop = quantizedLevel * levelHeight;
+                    setTimeout(() => {
+                        dot.style.transition = 'top 0.5s ease';
+                        dot.style.top = `${newTop-4}px`;
+                        dot.classList.replace('bg-red-500', 'bg-teal-600');
+                    }, 500);
+                });
+            });
+
+            encodeBtn.addEventListener('click', () => {
+                if (pcmStep !== 2) return;
+                pcmStep = 3;
+                setButtonState(pcmStep);
+                updateExplanation('3. Encoding', 'Each quantized level is assigned a unique binary code. This binary stream is now robust and ready for transmission.');
+                document.querySelectorAll('[data-type="sample-dot"]').forEach(dot => {
+                    const top = parseFloat(dot.style.top) + 4;
+                    const level = Math.round(top / (analogWaveCanvas.offsetHeight / numLevels));
+                    const binaryCode = (numLevels - 1 - level).toString(2).padStart(3, '0');
+                    const codeEl = document.createElement('div');
+                    codeEl.className = 'absolute text-xs font-mono bg-zinc-800 text-white px-1 rounded';
+                    codeEl.style.left = `${parseFloat(dot.style.left)}px`;
+                    codeEl.style.top = `${parseFloat(dot.style.top) + 12}px`;
+                    codeEl.style.transform = 'scale(0)';
+                    codeEl.style.transition = 'transform 0.3s ease';
+                    codeEl.textContent = binaryCode;
+                    diagramContainer.appendChild(codeEl);
+                    setTimeout(() => codeEl.style.transform = 'scale(1)', 100);
+                });
+                
+                const resetButton = document.createElement('button');
+                resetButton.textContent = 'Reset Simulation';
+                resetButton.className = 'w-full bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors mt-3';
+                resetButton.onclick = () => {
+                    pcmStep = 0;
+                    setButtonState(pcmStep);
+                    diagramContainer.innerHTML = '';
+                    updateExplanation('Start the process', 'Click the "Sample" button to begin the conversion process.');
+                    resetButton.remove();
+                };
+                pcmControlsContainer.appendChild(resetButton);
+            });
+            
+            window.addEventListener('resize', () => {
+                if (document.querySelector('#process.active')) {
+                     drawAnalogWave();
+                }
+            });
+
+            // --- Initial Load ---
+            setButtonState(0);
+            setActiveSection();
+
+            // --- System Architecture Diagram Logic ---
+            const systemComponents = document.querySelectorAll('.system-component');
+            const systemDescs = document.querySelectorAll('.system-desc');
+            const initialDesc = document.getElementById('desc-initial');
+            
+            systemComponents.forEach(comp => {
+                comp.addEventListener('click', () => {
+                    const targetId = comp.dataset.target;
+                    systemComponents.forEach(c => c.classList.remove('bg-sky-100', 'border-sky-500'));
+                    comp.classList.add('bg-sky-100', 'border-sky-500');
+                    systemDescs.forEach(desc => desc.classList.add('hidden'));
+                    initialDesc.classList.add('hidden');
+                    const targetDesc = document.getElementById(targetId);
+                    if(targetDesc) targetDesc.classList.remove('hidden');
+                });
+            });
+
+        });
+    </script>
+
+</body>
+</ht

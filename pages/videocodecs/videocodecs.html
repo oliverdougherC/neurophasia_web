@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Codecs - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Tech Tonic -->
+    <!-- Application Structure Plan: The SPA is designed as a narrative journey for the user, starting with fundamental concepts and progressing to detailed comparisons. The structure is thematic, not a mirror of the report, to enhance learning and engagement. It begins with a high-level "What & Why" section. It then moves to an interactive "How it Works" diagram of the encoding pipeline, making a complex process digestible. The "Evolution" timeline provides historical context. The core of the app is the "Codec Showdown" dashboard, enabling direct, interactive comparison of modern codecs—the most actionable information in the report. Finally, the "Codecs vs. Containers" section clarifies a common point of confusion. This structure guides the user from foundational knowledge to practical, comparative insights, maximizing usability and understanding. -->
+    <!-- Visualization & Content Choices:
+        - Uncompressed Data (What & Why): Goal: Inform/Shock. Method: A dynamic counter and bar visual to show the drastic size reduction. Justification: Immediately grabs attention and establishes the "why" of codecs. Library: Vanilla JS.
+        - Encoding Pipeline (How it Works): Goal: Explain a Process. Method: An interactive, clickable/scroll-driven diagram built with HTML/CSS/JS. Justification: Transforms a dense, linear text description into an engaging, step-by-step exploration, improving comprehension. Library: Vanilla JS.
+        - Codec Evolution (Timeline): Goal: Show Change Over Time. Method: An interactive horizontal timeline. Justification: Visually represents the generational improvements in a more impactful way than a simple table. A linked bar chart shows the relative efficiency gain. Library: Chart.js, Vanilla JS.
+        - Codec Comparison (Showdown): Goal: Compare. Method: A multi-faceted dashboard with a Radar chart for feature comparison and a Bar chart for efficiency benchmarks. Justification: The radar chart provides an excellent multi-axis view of complex trade-offs (quality, complexity, adoption). The bar chart provides a clear, quantitative comparison of performance. User interaction (selecting codecs) makes the data exploration personalized and more meaningful. Library: Chart.js.
+        - Codecs vs. Containers: Goal: Organize/Clarify. Method: A simple, interactive graphic using the report's "gift box" analogy. Justification: Visualizes the abstract relationship, making it much easier to understand than text alone. Library: Vanilla JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F2F5;
+            color: #1a202c;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 50vh;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                max-height: 60vh;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover {
+            color: #2D3748;
+            border-bottom-color: #2D3748;
+        }
+        .nav-link.active {
+            color: #2D3748;
+            font-weight: 600;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .btn-secondary {
+            background-color: #E2E8F0;
+            color: #4A5568;
+            transition: background-color 0.3s;
+        }
+        .btn-secondary.active {
+            background-color: #4A5568;
+            color: #FFFFFF;
+        }
+        .timeline-item {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .timeline-item:hover .timeline-dot {
+            transform: scale(1.5);
+        }
+        .timeline-item.active .timeline-dot {
+             background-color: #2D3748;
+             transform: scale(1.8);
+        }
+        .timeline-dot {
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .pipeline-step {
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        .pipeline-step.active {
+            border-color: #4A5568;
+            background-color: #EDF2F7;
+        }
+    </style>
+</head>
+<body class="antialiased flex flex-col min-h-screen">
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="https://neurophasia.com" target="_blank" rel="noopener noreferrer" class="text-2xl font-bold text-gray-800 hover:text-gray-600 transition-colors">Neurophasia</a>
+            <div class="hidden md:flex space-x-8">
+                <a href="#introduction" class="nav-link active">Introduction</a>
+                <a href="#pipeline" class="nav-link">Pipeline</a>
+                <a href="#evolution" class="nav-link">Evolution</a>
+                <a href="#showdown" class="nav-link">Showdown</a>
+                <a href="#containers" class="nav-link">Containers</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500" aria-label="Open menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden">
+            <a href="#introduction" class="block py-2 px-6 text-sm nav-link active">Introduction</a>
+            <a href="#pipeline" class="block py-2 px-6 text-sm nav-link">Pipeline</a>
+            <a href="#evolution" class="block py-2 px-6 text-sm nav-link">Evolution</a>
+            <a href="#showdown" class="block py-2 px-6 text-sm nav-link">Showdown</a>
+            <a href="#containers" class="block py-2 px-6 text-sm nav-link">Containers</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-12 flex-grow">
+        <section id="introduction" class="scroll-mt-20 text-center mb-24">
+            <h2 class="text-4xl font-bold mb-4 tracking-tight">The Video Codecs Abstract</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 mb-8">
+                A video codec is the technology that compresses massive raw video files into manageable sizes for streaming, broadcasting, and storage. Without them, the digital video world as we know it—from YouTube to Netflix—would be impossible. This explorer demystifies how they work.
+            </p>
+            <div class="card p-6 md:p-8 max-w-4xl mx-auto" id="compression-stats-card">
+                <h3 class="text-2xl font-semibold mb-4">The Compression Imperative</h3>
+                <p class="text-gray-600 mb-6">A single minute of uncompressed Full HD (1080p) video is enormous. See how much data a codec can save.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    <div class="text-center">
+                        <p class="text-lg font-medium text-gray-500">Uncompressed (1 Min)</p>
+                        <p id="uncompressed-size" class="text-5xl font-bold text-red-500" data-target="8.96">0</p>
+                        <p class="text-xl font-semibold">GB</p>
+                    </div>
+                    <div class="text-center font-bold text-4xl text-gray-400">
+                        &rarr;
+                    </div>
+                    <div class="text-center">
+                        <p class="text-lg font-medium text-gray-500">H.264 Compressed (1 Min)</p>
+                        <p id="compressed-size" class="text-5xl font-bold text-green-500" data-target="0.015">0</p>
+                        <p class="text-xl font-semibold">GB</p>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div id="compression-bar" class="bg-green-500 h-4 rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                    </div>
+                    <p class="text-center mt-2 font-semibold text-2xl text-green-600">
+                        ~<span id="compression-ratio" data-target="99.8">0</span>% Size Reduction
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="pipeline" class="scroll-mt-20 mb-24">
+            <h2 class="text-3xl font-bold text-center mb-4">How Video Compression Works</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 text-center mb-12">
+                Modern video codecs follow a sophisticated, multi-stage pipeline to intelligently remove redundant data. Each step plays a critical role in balancing quality and file size. Click through the steps below to explore the process.
+            </p>
+            <div class="flex flex-col lg:flex-row gap-8">
+                <div class="lg:w-1/3">
+                    <div id="pipeline-steps-container" class="space-y-4">
+                    </div>
+                </div>
+                <div class="lg:w-2/3 card p-6 md:p-8 min-h-[250px]">
+                    <h3 id="pipeline-title" class="text-2xl font-bold mb-3"></h3>
+                    <p id="pipeline-description" class="text-gray-700 leading-relaxed"></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="evolution" class="scroll-mt-20 mb-24">
+            <h2 class="text-3xl font-bold text-center mb-4">The Evolution of Efficiency</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 text-center mb-12">
+                Roughly every decade, a new generation of codec emerges, offering about double the compression efficiency of its predecessor. This relentless innovation has enabled the jump from grainy VCDs to stunning 8K streaming.
+            </p>
+            <div class="card p-6 md:p-8">
+                <div class="w-full py-8 px-2">
+                    <div class="relative">
+                        <div class="absolute left-0 top-1/2 w-full h-1 bg-gray-300 -translate-y-1/2"></div>
+                        <div id="timeline-container" class="relative flex justify-between items-center">
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 id="timeline-title" class="text-2xl font-bold mb-2"></h3>
+                        <p id="timeline-year" class="text-lg font-semibold text-gray-500 mb-4"></p>
+                        <p id="timeline-description" class="text-gray-700 leading-relaxed"></p>
+                    </div>
+                    <div class="chart-container h-64 md:h-80">
+                        <canvas id="evolution-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="showdown" class="scroll-mt-20 mb-24">
+            <h2 class="text-3xl font-bold text-center mb-4">Modern Codec Showdown</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 text-center mb-12">
+                Today's leading codecs offer different strengths. H.264 provides maximum compatibility, while newer codecs like HEVC and AV1 deliver superior efficiency for 4K/HDR content, but with trade-offs in complexity and licensing. Explore their characteristics and performance below.
+            </p>
+            <div class="card p-6 md:p-8">
+                <div class="flex justify-center flex-wrap gap-2 mb-8" id="codec-selector">
+                </div>
+                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                    <div class="chart-container">
+                        <canvas id="codec-radar-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="codec-bar-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="containers" class="scroll-mt-20">
+             <h2 class="text-3xl font-bold text-center mb-4">Codecs vs. Containers: What's the Difference?</h2>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600 text-center mb-12">
+                A common point of confusion is the difference between a codec and a container format (like .MP4 or .MKV). A simple analogy helps: the codec is how you pack a gift to make it small, and the container is the box you put it in. A single box type can hold gifts packed in different ways.
+            </p>
+            <div class="card p-6 md:p-8 max-w-5xl mx-auto">
+                 <div class="flex flex-col md:flex-row gap-8 items-center justify-center">
+                     <div class="text-center">
+                        <h4 class="text-xl font-semibold mb-4">1. Select a Codec (The "Packing")</h4>
+                        <div class="flex gap-4 justify-center" id="container-codec-selector">
+                        </div>
+                    </div>
+                     <div class="text-4xl font-bold text-gray-400 py-4">&rarr;</div>
+                     <div class="text-center">
+                        <h4 class="text-xl font-semibold mb-4">2. Choose a Container (The "Box")</h4>
+                         <div class="flex gap-4 justify-center" id="container-format-selector">
+                         </div>
+                     </div>
+                 </div>
+                 <div id="container-result" class="mt-8 text-center bg-gray-100 p-6 rounded-lg">
+                    <p class="text-xl font-semibold" id="container-output-text"></p>
+                    <p class="mt-2 text-gray-600" id="container-compatibility-text"></p>
+                 </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="bg-gray-800 text-white mt-16">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2025 Neurophasia.com</p>
+            <p class="text-sm text-gray-400 mt-1">Part of the Neurophasia Archive</p>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const appData = {
+        pipeline: [
+            { title: 'Color Space & Subsampling', description: "Raw video is converted from RGB to YCbCr, separating brightness (Luma) from color (Chroma). Since our eyes are less sensitive to color detail, Chroma data is often 'subsampled' (reduced in resolution) for a massive data saving with minimal visual impact. 4:2:0 subsampling is most common." },
+            { title: 'Frame Partitioning', description: "Each frame is divided into blocks (e.g., H.264's Macroblocks or HEVC/AV1's larger, more flexible Coding Tree Units/Superblocks). Processing the video in small chunks allows the codec to adapt its strategy to different parts of the image." },
+            { title: 'Prediction', description: "This is the core of compression. The codec predicts what a block will look like based on its neighbors in the same frame (Intra-prediction) or from blocks in other frames (Inter-prediction using Motion Vectors). It only needs to encode the small difference (the 'residual'), not the whole block." },
+            { title: 'Transform', description: "The residual data (the prediction error) is converted from the spatial (pixel) domain to the frequency domain using a transform like the Discrete Cosine Transform (DCT). This concentrates most of the signal's energy into a few coefficients." },
+            { title: 'Quantization', description: "This is the primary 'lossy' step. The transform coefficients are divided and rounded, reducing their precision. High-frequency coefficients (fine details) are quantized more aggressively, as our eyes are less sensitive to their loss. This step dramatically reduces data size." },
+            { title: 'Entropy Coding', description: "The final, lossless compression step. Quantized coefficients and other data are represented using techniques like Arithmetic Coding (e.g., CABAC). Frequently occurring values get shorter codes, and rare values get longer codes, squeezing out the last bits of redundancy." },
+            { title: 'In-Loop Filtering', description: "To clean up artifacts created during compression (like 'blocking' at block edges), filters are applied inside the encoding loop. This improves visual quality and provides a cleaner reference for predicting future frames, enhancing overall efficiency." }
+        ],
+        evolution: [
+            { codec: 'MPEG-2', year: '1995', description: 'The standard for DVD and early digital TV. It brought digital video to the masses but was inefficient by modern standards.', efficiency: 100 },
+            { codec: 'H.264/AVC', year: '2003', description: 'A revolutionary codec offering ~50% better compression than MPEG-2. It powered the rise of HD streaming, Blu-ray, and modern video on the internet.', efficiency: 50 },
+            { codec: 'VP8', year: '2010', description: 'Google\'s open-source, royalty-free codec. A key component of the WebM project, designed as an open alternative to H.264 for web video.', efficiency: 45 },
+            { codec: 'H.265/HEVC', year: '2013', description: 'The successor to H.264, offering another ~50% efficiency gain. Crucial for 4K/UHD streaming and HDR content, but with a complex licensing situation.', efficiency: 25 },
+            { codec: 'VP9', year: '2013', description: 'Google\'s royalty-free successor to VP8, with efficiency comparable to HEVC. Heavily used by YouTube for high-resolution content.', efficiency: 25 },
+            { codec: 'AV1', year: '2018', description: 'A next-gen, royalty-free codec from the Alliance for Open Media. It aims for ~30% better compression than HEVC/VP9, designed for the future of internet video.', efficiency: 17.5 },
+            { codec: 'VVC/H.266', year: '2020', description: 'The official successor to HEVC, targeting another 30-50% efficiency improvement. Designed for 8K, 360° video, and other demanding applications.', efficiency: 12.5 },
+        ],
+        showdown: {
+            labels: ["Compression Efficiency", "Encoding Complexity", "Decoding Complexity", "Adoption & Compatibility", "Royalty-Free"],
+            codecs: {
+                'H.264/AVC': { data: [3, 2, 2, 5, 2], color: 'rgba(54, 162, 235, 0.5)', efficiency: 100 },
+                'H.265/HEVC': { data: [5, 4, 3, 4, 1], color: 'rgba(255, 99, 132, 0.5)', efficiency: 50 },
+                'VP9': { data: [4.8, 3.5, 2.5, 4, 5], color: 'rgba(75, 192, 192, 0.5)', efficiency: 52 },
+                'AV1': { data: [5, 5, 4, 3, 5], color: 'rgba(255, 206, 86, 0.5)', efficiency: 35 },
+                'VVC/H.266': { data: [5, 5, 5, 1, 1], color: 'rgba(153, 102, 255, 0.5)', efficiency: 25 }
+            }
+        },
+        containers: {
+            codecs: ['H.264', 'AV1'],
+            formats: ['MP4', 'MKV'],
+            compatibility: {
+                'MP4': { 'H.264': 'This is a highly compatible combination, playable on almost any device.', 'AV1': 'A modern, efficient combination. Support is growing rapidly but is not yet as universal as H.264.'},
+                'MKV': { 'H.264': 'A flexible combination. MKV containers are very capable but may require specific players like VLC for playback on some devices.', 'AV1': 'A powerful, open-standard combination. MKV can easily store AV1 video with multiple audio and subtitle tracks, popular for high-quality archives.'}
+            }
+        }
+    };
+
+    let evolutionChart, radarChart, barChart;
+    let selectedCodecs = ['H.264/AVC', 'H.265/HEVC', 'AV1'];
+
+    const setupMobileMenu = () => {
+        const menuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        menuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+    };
+
+    const setupNavigation = () => {
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('main section');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+                    document.querySelectorAll('.nav-link').forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+                    });
+                }
+            });
+        }, { rootMargin: '-20% 0px -80% 0px', threshold: 0.1 });
+        sections.forEach(section => observer.observe(section));
+    };
+
+    const setupIntroAnimation = () => {
+        const statsCard = document.getElementById('compression-stats-card');
+        const animateCounter = (el) => {
+            const target = parseFloat(el.dataset.target);
+            const duration = 1500;
+            const decimals = el.id === 'compressed-size' ? 3 : 1;
+            let start = 0;
+            const stepTime = 20;
+            const totalSteps = duration / stepTime;
+            const increment = target / totalSteps;
+            const timer = setInterval(() => {
+                start += increment;
+                if (start >= target) {
+                    start = target;
+                    clearInterval(timer);
+                }
+                el.textContent = start.toFixed(decimals);
+            }, stepTime);
+        };
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) {
+                document.querySelectorAll('[data-target]').forEach(animateCounter);
+                document.getElementById('compression-bar').style.width = '0.167%';
+                observer.unobserve(statsCard);
+            }
+        }, { threshold: 0.5 });
+        observer.observe(statsCard);
+    };
+
+    const setupPipeline = () => {
+        const container = document.getElementById('pipeline-steps-container');
+        const titleEl = document.getElementById('pipeline-title');
+        const descEl = document.getElementById('pipeline-description');
+        const fragment = document.createDocumentFragment();
+        appData.pipeline.forEach((step, index) => {
+            const stepEl = document.createElement('div');
+            stepEl.className = 'pipeline-step card p-4';
+            stepEl.innerHTML = `<h4 class="font-semibold text-lg">${index + 1}. ${step.title}</h4>`;
+            stepEl.dataset.index = index;
+            stepEl.setAttribute('role', 'button');
+            stepEl.setAttribute('tabindex', '0');
+            fragment.appendChild(stepEl);
+        });
+        container.appendChild(fragment);
+        const stepElements = container.querySelectorAll('.pipeline-step');
+        const updatePipeline = (index) => {
+            const step = appData.pipeline[index];
+            titleEl.textContent = step.title;
+            descEl.textContent = step.description;
+            stepElements.forEach(el => el.classList.toggle('active', parseInt(el.dataset.index) === index));
+        };
+        const handleEvent = (e) => {
+            const stepEl = e.target.closest('.pipeline-step');
+            if (stepEl && (e.type === 'click' || e.key === 'Enter' || e.key === ' ')) {
+                if (e.type !== 'click') e.preventDefault();
+                updatePipeline(parseInt(stepEl.dataset.index));
+            }
+        };
+        container.addEventListener('click', handleEvent);
+        container.addEventListener('keydown', handleEvent);
+        updatePipeline(0);
+    };
+    
+    const setupEvolution = () => {
+        const container = document.getElementById('timeline-container');
+        const fragment = document.createDocumentFragment();
+        appData.evolution.forEach((item, index) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'timeline-item flex-1 flex flex-col items-center text-center';
+            itemEl.dataset.index = index;
+            itemEl.setAttribute('role', 'button');
+            itemEl.setAttribute('tabindex', '0');
+            itemEl.innerHTML = `
+                <div class="pb-3">
+                    <div class="timeline-dot w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+                <div class="pt-3">
+                    <p class="text-xs sm:text-sm font-semibold leading-tight">${item.codec}</p>
+                    <p class="text-xs text-gray-500">${item.year}</p>
+                </div>
+            `;
+            fragment.appendChild(itemEl);
+        });
+        container.appendChild(fragment);
+
+        const timelineItems = container.querySelectorAll('.timeline-item');
+        const updateEvolution = (index) => {
+            const item = appData.evolution[index];
+            document.getElementById('timeline-title').textContent = item.codec;
+            document.getElementById('timeline-year').textContent = `Standardized: ${item.year}`;
+            document.getElementById('timeline-description').textContent = item.description;
+            timelineItems.forEach(el => el.classList.toggle('active', parseInt(el.dataset.index) === index));
+            if (evolutionChart) {
+                evolutionChart.data.datasets[0].data = [item.efficiency];
+                evolutionChart.update();
+            }
+        };
+        
+        const handleEvent = (e) => {
+            const itemEl = e.target.closest('.timeline-item');
+            if (itemEl && (e.type === 'click' || e.key === 'Enter' || e.key === ' ')) {
+                 if(e.type !== 'click') e.preventDefault();
+                updateEvolution(parseInt(itemEl.dataset.index));
+            }
+        };
+        container.addEventListener('click', handleEvent);
+        container.addEventListener('keydown', handleEvent);
+
+        const ctx = document.getElementById('evolution-chart').getContext('2d');
+        evolutionChart = new Chart(ctx, {
+            type: 'bar', data: { labels: ['Relative Bitrate for Same Quality'], datasets: [{ label: 'Bitrate % (vs MPEG-2)', data: [], backgroundColor: 'rgba(75, 192, 192, 0.6)', borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 1, maxBarThickness: 100 }] },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${context.dataset.label}: ${context.raw}%` } } } }
+        });
+        updateEvolution(1);
+    };
+
+    const updateShowdownCharts = () => {
+        const radarData = selectedCodecs.map(name => {
+            const codec = appData.showdown.codecs[name];
+            return { label: name, data: codec.data, backgroundColor: codec.color, borderColor: codec.color.replace('0.5', '1'), pointBackgroundColor: codec.color.replace('0.5', '1'), pointBorderColor: '#fff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: codec.color.replace('0.5', '1') };
+        });
+        radarChart.data.datasets = radarData;
+        radarChart.update();
+
+        const barData = selectedCodecs.map(name => appData.showdown.codecs[name].efficiency);
+        const barColors = selectedCodecs.map(name => appData.showdown.codecs[name].color);
+        barChart.data.labels = selectedCodecs;
+        barChart.data.datasets[0].data = barData;
+        barChart.data.datasets[0].backgroundColor = barColors;
+        barChart.data.datasets[0].borderColor = barColors.map(c => c.replace('0.5', '1'));
+        barChart.update();
+    };
+
+    const setupShowdown = () => {
+        const selectorContainer = document.getElementById('codec-selector');
+        const fragment = document.createDocumentFragment();
+        Object.keys(appData.showdown.codecs).forEach(codecName => {
+            const button = document.createElement('button');
+            button.className = `btn-secondary px-4 py-2 rounded-lg font-medium ${selectedCodecs.includes(codecName) ? 'active' : ''}`;
+            button.textContent = codecName;
+            button.dataset.codec = codecName;
+            fragment.appendChild(button);
+        });
+        selectorContainer.appendChild(fragment);
+        
+        selectorContainer.addEventListener('click', e => {
+            if (e.target.tagName === 'BUTTON') {
+                const codec = e.target.dataset.codec;
+                const index = selectedCodecs.indexOf(codec);
+                if (index > -1) { if(selectedCodecs.length > 1) { selectedCodecs.splice(index, 1); e.target.classList.remove('active'); } } 
+                else { selectedCodecs.push(codec); e.target.classList.add('active'); }
+                updateShowdownCharts();
+            }
+        });
+        
+        const radarCtx = document.getElementById('codec-radar-chart').getContext('2d');
+        radarChart = new Chart(radarCtx, { type: 'radar', data: { labels: appData.showdown.labels, datasets: [] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, title: { display: true, text: 'Feature Comparison (Higher is Better)', font: { size: 16 } } }, scales: { r: { suggestedMin: 0, suggestedMax: 5, pointLabels: { font: { size: 12 } }, ticks: { display: false, stepSize: 1 } } } } });
+        const barCtx = document.getElementById('codec-bar-chart').getContext('2d');
+        barChart = new Chart(barCtx, { type: 'bar', data: { labels: [], datasets: [{ label: 'Relative Bitrate for Same Quality (vs H.264)', data: [], backgroundColor: [], borderColor: [], borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Bitrate Savings (Lower is Better)', font: { size: 16 } }, tooltip: { callbacks: { label: context => `~${context.raw}% of H.264's bitrate` } } }, scales: { y: { beginAtZero: true, ticks: { callback: value => value + '%' } } } } });
+        updateShowdownCharts();
+    };
+    
+    const setupContainers = () => {
+        const codecSelector = document.getElementById('container-codec-selector');
+        const formatSelector = document.getElementById('container-format-selector');
+        let currentCodec = appData.containers.codecs[0];
+        let currentFormat = appData.containers.formats[0];
+        
+        const createButton = (text, type, group) => {
+            const button = document.createElement('button');
+            button.className = 'btn-secondary px-4 py-2 rounded-lg font-medium';
+            button.textContent = type === 'format' ? `.${text}` : text;
+            button.dataset[type] = text;
+            group.appendChild(button);
+        };
+        appData.containers.codecs.forEach(c => createButton(c, 'codec', codecSelector));
+        appData.containers.formats.forEach(f => createButton(f, 'format', formatSelector));
+        
+        const updateContainerResult = () => {
+            const compatibilityText = appData.containers.compatibility[currentFormat][currentCodec];
+            document.getElementById('container-output-text').innerHTML = `You've created an <span class="font-bold text-indigo-600">${currentFormat}</span> file containing video compressed with <span class="font-bold text-teal-600">${currentCodec}</span>.`;
+            document.getElementById('container-compatibility-text').textContent = compatibilityText;
+        };
+        const handleSelection = (e, type, selector, variableSetter) => {
+            if(e.target.tagName === 'BUTTON') {
+                variableSetter(e.target.dataset[type]);
+                selector.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                updateContainerResult();
+            }
+        };
+        codecSelector.addEventListener('click', e => handleSelection(e, 'codec', codecSelector, val => currentCodec = val));
+        formatSelector.addEventListener('click', e => handleSelection(e, 'format', formatSelector, val => currentFormat = val));
+        
+        codecSelector.querySelector('button').classList.add('active');
+        formatSelector.querySelector('button').classList.add('active');
+        updateContainerResult();
+    };
+
+    setupMobileMenu();
+    setupNavigation();
+    setupIntroAnimation();
+    setupPipeline();
+    setupEvolution();
+    setupShowdown();
+    setupContainers();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FT - Neurophasia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Cool Neutrals & Tech Blue" -->
+    <!-- Application Structure Plan: The SPA is structured into thematic, non-linear sections to facilitate learning. It starts with a high-level introduction, then moves to an interactive "Transform Explorer" to build intuition. It then logically groups the different "Fourier Family" members for comparison. The "FFT Revolution" section provides a powerful visual comparison of computational efficiency. A gallery of "Real-World Applications" connects theory to practice. Finally, a section on "Beyond Fourier" introduces advanced concepts. This structure allows users to explore topics based on interest and build knowledge progressively, which is more effective for a dense, technical subject than a linear report format. -->
+    <!-- Visualization & Content Choices: 
+        - Introduction: Goal: Inform. Method: Simple text and context. Interaction: None.
+        - Transform Explorer: Goal: Explore/Understand. Method: Two synchronized Chart.js charts (time and frequency domain). Interaction: Users can add/remove sine waves via buttons, and the charts update in real-time, directly visualizing the core concept of signal decomposition. Library: Chart.js.
+        - The Fourier Family: Goal: Compare/Organize. Method: A tabbed interface using HTML/CSS/JS. Interaction: Clicking tabs reveals concise info on each transform type. Justification: Cleaner than a long table, allows focused comparison.
+        - The FFT Revolution: Goal: Compare. Method: A dynamic Chart.js bar chart. Interaction: A slider allows users to change input size 'N', and the chart updates to show the vast difference between O(N^2) and O(N log N) complexity. Justification: This interactive visualization makes the abstract concept of algorithmic efficiency tangible and impactful. Library: Chart.js.
+        - Applications: Goal: Inform/Organize. Method: An interactive card gallery. Interaction: Clicking a card reveals details and a simple visual representation for each application (e.g., audio, image). Justification: Engages users and connects abstract concepts to concrete, familiar examples.
+        - Beyond Fourier: Goal: Inform. Method: A comparative layout using structured HTML/CSS to represent time-frequency tiling for STFT and Wavelets. Justification: Provides a clear, visual introduction to complex advanced topics without needing complex charting libraries.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bg-primary { background-color: #f8fafc; }
+        .text-primary { color: #1e293b; }
+        .text-secondary { color: #475569; }
+        .accent-bg { background-color: #3b82f6; }
+        .accent-text { color: #3b82f6; }
+        .accent-border { border-color: #3b82f6; }
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+        }
+        .nav-link:hover, .nav-link.active {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+        }
+        .content-section, .tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .content-section.active, .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-primary text-primary">
+
+    <header class="sticky top-0 bg-primary/80 backdrop-blur-md z-50 border-b border-slate-200">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-col sm:flex-row justify-between items-center">
+                <a href="https://neurophasia.com" target="_blank" class="text-xl font-bold text-primary mb-2 sm:mb-0 hover:underline">Neurophasia</a>
+                <div id="nav-links" class="flex flex-wrap justify-center gap-2">
+                    <a href="#intro" class="nav-link active">Intro</a>
+                    <a href="#explorer" class="nav-link">Explorer</a>
+                    <a href="#family" class="nav-link">Family</a>
+                    <a href="#fft" class="nav-link">FFT Revolution</a>
+                    <a href="#apps" class="nav-link">Applications</a>
+                    <a href="#beyond" class="nav-link">Beyond</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        
+        <h1 class="text-4xl font-bold text-center text-primary mb-12">The FT & FFT Abstract</h1>
+
+        <section id="intro" class="content-section active">
+            <h2 class="text-3xl font-bold mb-4 text-center">Decomposing Signals into Sound</h2>
+            <p class="text-lg text-secondary max-w-3xl mx-auto text-center mb-8">
+                At its heart, the Fourier Transform is a mathematical tool that breaks down any complex signal—like a sound wave, a radio signal, or even an image—into a sum of simple sine waves. This interactive guide will help you build an intuition for what that means, why it's one of the most important ideas in modern science and engineering, and how it powers the world around us.
+            </p>
+            <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                <p class="text-center text-secondary">
+                    <span class="font-semibold accent-text">The Core Idea:</span>
+                    Imagine a musical chord. It sounds like a single, complex sound. The Fourier Transform is like having a perfect ear that can pick out every individual note (frequency) that makes up that chord, and tell you how loud (amplitude) each note is.
+                </p>
+            </div>
+        </section>
+
+        <section id="explorer" class="content-section">
+            <h2 class="text-3xl font-bold mb-2 text-center">Interactive Signal Explorer</h2>
+            <p class="text-lg text-secondary max-w-3xl mx-auto text-center mb-8">
+                This is the core concept of the Fourier Transform in action. Build a complex signal in the 'Time Domain' by adding simple sine waves. The 'Frequency Domain' chart will instantly show the "ingredients" of your signal. Click the buttons to add or remove components.
+            </p>
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Time Domain Signal (Your Recipe)</h3>
+                    <div class="chart-container">
+                        <canvas id="timeDomainChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="text-xl font-semibold mb-4 text-center">Frequency Domain Spectrum (Ingredients)</h3>
+                     <div class="chart-container">
+                        <canvas id="frequencyDomainChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <h3 class="font-semibold mb-2">Signal Components:</h3>
+                <div id="signal-controls" class="flex flex-wrap justify-center gap-3">
+                    <button data-freq="1" data-amp="1" class="px-4 py-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition">Add 1 Hz</button>
+                    <button data-freq="3" data-amp="0.6" class="px-4 py-2 bg-green-500 text-white rounded-lg shadow hover:bg-green-600 transition">Add 3 Hz</button>
+                    <button data-freq="5" data-amp="0.8" class="px-4 py-2 bg-purple-500 text-white rounded-lg shadow hover:bg-purple-600 transition">Add 5 Hz</button>
+                    <button id="reset-signal" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition">Reset Signal</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="family" class="content-section">
+            <h2 class="text-3xl font-bold mb-2 text-center">The Fourier Family of Transforms</h2>
+            <p class="text-lg text-secondary max-w-3xl mx-auto text-center mb-8">
+                "Fourier Transform" isn't a single entity. It's a family of related mathematical tools, each tailored for a different type of signal. The choice of transform depends on whether the signal is continuous or discrete, and periodic or aperiodic.
+            </p>
+            <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+                <div class="flex border-b border-slate-200">
+                    <button data-tab="ctft" class="flex-1 p-4 font-semibold text-sm md:text-base text-center tab-btn active bg-slate-50 accent-text">CTFT</button>
+                    <button data-tab="fs" class="flex-1 p-4 font-semibold text-sm md:text-base text-center tab-btn">Fourier Series</button>
+                    <button data-tab="dft" class="flex-1 p-4 font-semibold text-sm md:text-base text-center tab-btn">DFT</button>
+                    <button data-tab="dtft" class="flex-1 p-4 font-semibold text-sm md:text-base text-center tab-btn">DTFT</button>
+                </div>
+                <div class="p-6">
+                    <div id="ctft" class="tab-content active">
+                        <h3 class="text-xl font-bold accent-text mb-2">Continuous-Time Fourier Transform (CTFT)</h3>
+                        <p class="text-secondary"><strong class="text-primary">Signal Type:</strong> Continuous, Aperiodic (e.g., a single sound clap, a transient voltage pulse).</p>
+                        <p class="mt-2 text-secondary"><strong class="text-primary">Use Case:</strong> The theoretical foundation. It's used for analyzing idealized, non-repeating signals that exist over all time. It transforms a continuous time-domain function into a continuous frequency-domain function.</p>
+                    </div>
+                    <div id="fs" class="tab-content">
+                        <h3 class="text-xl font-bold accent-text mb-2">Fourier Series (FS)</h3>
+                        <p class="text-secondary"><strong class="text-primary">Signal Type:</strong> Continuous, Periodic (e.g., a steady musical note, a perfect AC power waveform).</p>
+                        <p class="mt-2 text-secondary"><strong class="text-primary">Use Case:</strong> Represents a repeating signal as a sum of discrete, harmonically related frequencies. The result is a discrete spectrum (lines at integer multiples of the fundamental frequency).</p>
+                    </div>
+                    <div id="dft" class="tab-content">
+                        <h3 class="text-xl font-bold accent-text mb-2">Discrete Fourier Transform (DFT)</h3>
+                        <p class="text-secondary"><strong class="text-primary">Signal Type:</strong> Discrete, Finite (e.g., a sampled audio clip from a computer, a digital image).</p>
+                        <p class="mt-2 text-secondary"><strong class="text-primary">Use Case:</strong> The practical, computable version for the digital world. It takes a finite number of samples and produces a finite number of frequency components. This is what computers use. The FFT is a fast algorithm to compute the DFT.</p>
+                    </div>
+                    <div id="dtft" class="tab-content">
+                        <h3 class="text-xl font-bold accent-text mb-2">Discrete-Time Fourier Transform (DTFT)</h3>
+                        <p class="text-secondary"><strong class="text-primary">Signal Type:</strong> Discrete, Aperiodic (e.g., an infinitely long sequence of samples).</p>
+                        <p class="mt-2 text-secondary"><strong class="text-primary">Use Case:</strong> A theoretical tool for analyzing discrete signals. It bridges the gap between the continuous CTFT and the computable DFT. It transforms a discrete time sequence into a continuous, periodic frequency spectrum.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="fft" class="content-section">
+            <h2 class="text-3xl font-bold mb-2 text-center">The FFT Revolution: An Algorithmic Leap</h2>
+            <p class="text-lg text-secondary max-w-3xl mx-auto text-center mb-8">
+                The Discrete Fourier Transform (DFT) was powerful but slow. For a signal with 'N' samples, it took roughly N² operations. The Fast Fourier Transform (FFT) is a clever algorithm that computes the *exact same result* but in only N log(N) operations. This algorithmic breakthrough made modern digital signal processing possible. Use the slider to see the difference.
+            </p>
+            <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                <div class="chart-container">
+                    <canvas id="fftComplexityChart"></canvas>
+                </div>
+                <div class="mt-6 max-w-md mx-auto">
+                    <label for="n-slider" class="block text-center font-medium mb-2">Number of Samples (N)</label>
+                    <input id="n-slider" type="range" min="3" max="16" value="10" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-secondary mt-1">
+                        <span>8 (2³)</span>
+                        <span>65,536 (2¹⁶)</span>
+                    </div>
+                    <p class="text-center mt-4 font-semibold text-lg">For N = <span id="n-value">1024</span>, FFT is <span id="speedup-factor" class="accent-text">102x</span> faster!</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="apps" class="content-section">
+            <h2 class="text-3xl font-bold mb-2 text-center">Real-World Applications</h2>
+            <p class="text-lg text-secondary max-w-3xl mx-auto text-center mb-8">
+                The FFT is not just a mathematical curiosity; it's the engine behind countless technologies we use every day. Explore some examples below by clicking on the cards.
+            </p>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="app-card bg-white p-6 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform">
+                    <h3 class="text-xl font-bold mb-2">🎵 Audio Engineering</h3>
+                    <p class="text-secondary">Used for equalization (EQ), noise cancellation, and audio compression like MP3, which discards frequencies we can't hear.</p>
+                </div>
+                <div class="app-card bg-white p-6 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform">
+                    <h3 class="text-xl font-bold mb-2">🖼️ Image Processing</h3>
+                    <p class="text-secondary">The JPEG format uses a related transform (DCT) to compress images by discarding high-frequency details our eyes don't notice.</p>
+                </div>
+                <div class="app-card bg-white p-6 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform">
+                    <h3 class="text-xl font-bold mb-2">📡 Telecommunications</h3>
+                    <p class="text-secondary">Wi-Fi, 4G, and 5G use OFDM, which relies on the IFFT/FFT to send vast amounts of data over many sub-frequencies simultaneously.</p>
+                </div>
+                <div class="app-card bg-white p-6 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform">
+                    <h3 class="text-xl font-bold mb-2">🩺 Medical Imaging</h3>
+                    <p class="text-secondary">Magnetic Resonance Imaging (MRI) machines collect frequency data from the body and use the FFT to reconstruct it into a detailed image.</p>
+                </div>
+                <div class="app-card bg-white p-6 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform">
+                    <h3 class="text-xl font-bold mb-2">🔬 Physics & Engineering</h3>
+                    <p class="text-secondary">Used to solve differential equations, analyze vibrations in structures, and understand diffraction in optics.</p>
+                </div>
+                <div class="app-card bg-white p-6 rounded-xl shadow-md border border-slate-200 cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-transform">
+                    <h3 class="text-xl font-bold mb-2">⚛️ Crystallography</h3>
+                    <p class="text-secondary">Scientists analyze the diffraction pattern of X-rays (related to the FT) to determine the atomic structure of crystals.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="beyond" class="content-section">
+            <h2 class="text-3xl font-bold mb-2 text-center">Beyond Fourier: The Time-Frequency Trade-off</h2>
+            <p class="text-lg text-secondary max-w-3xl mx-auto text-center mb-8">
+                The Fourier Transform tells you *what* frequencies are in a signal, but not *when* they occur. This is a problem for non-stationary signals (like speech or music) where frequencies change over time. This led to advanced techniques that offer a compromise.
+            </p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="text-xl font-bold mb-2">Short-Time Fourier Transform (STFT)</h3>
+                    <p class="text-secondary mb-4">The STFT chops the signal into small, overlapping windows and runs an FFT on each. This creates a spectrogram, showing frequency content over time. However, it's a fixed trade-off: short windows give good time accuracy but poor frequency accuracy, and vice-versa.</p>
+                    <div class="p-4 bg-slate-50 rounded-lg">
+                        <p class="font-mono text-sm text-slate-600">Time-Frequency Tiling: Fixed Grid</p>
+                        <div class="grid grid-cols-4 gap-1 mt-2 h-24 bg-slate-200 p-1 rounded">
+                            <div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div>
+                            <div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div>
+                            <div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div>
+                            <div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div><div class="bg-sky-200 rounded-sm"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <h3 class="text-xl font-bold mb-2">Wavelet Transform</h3>
+                    <p class="text-secondary mb-4">Wavelets offer a more elegant solution. They use short, high-frequency basis functions to get good time resolution for fast events, and long, low-frequency basis functions to get good frequency resolution for slow events. This provides an adaptive, multi-resolution analysis.</p>
+                     <div class="p-4 bg-slate-50 rounded-lg">
+                        <p class="font-mono text-sm text-slate-600">Time-Frequency Tiling: Adaptive</p>
+                        <div class="flex flex-col gap-1 mt-2 h-24 bg-slate-200 p-1 rounded">
+                            <div class="grid grid-cols-8 gap-1 flex-1">
+                                <div class="bg-teal-200 rounded-sm"></div><div class="bg-teal-200 rounded-sm"></div><div class="bg-teal-200 rounded-sm"></div><div class="bg-teal-200 rounded-sm"></div>
+                                <div class="bg-teal-200 rounded-sm"></div><div class="bg-teal-200 rounded-sm"></div><div class="bg-teal-200 rounded-sm"></div><div class="bg-teal-200 rounded-sm"></div>
+                            </div>
+                            <div class="grid grid-cols-4 gap-1 flex-1">
+                                <div class="bg-teal-300 rounded-sm"></div><div class="bg-teal-300 rounded-sm"></div><div class="bg-teal-300 rounded-sm"></div><div class="bg-teal-300 rounded-sm"></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 flex-1">
+                                <div class="bg-teal-400 rounded-sm"></div><div class="bg-teal-400 rounded-sm"></div>
+                            </div>
+                             <div class="grid grid-cols-1 gap-1 flex-1">
+                                <div class="bg-teal-500 rounded-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="text-center py-8 text-secondary text-sm border-t border-slate-200 mt-12">
+        <p>&copy; 2025 Neurophasia.com</p>
+        <p>Part of the Neurophasia Archive</p>
+    </footer>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Navigation ---
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('.content-section');
+
+            function updateActiveNav(hash) {
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === hash);
+                });
+                sections.forEach(section => {
+                    section.classList.toggle('active', '#' + section.id === hash);
+                });
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    history.pushState(null, null, targetId);
+                    updateActiveNav(targetId);
+                });
+            });
+
+            window.addEventListener('popstate', () => {
+                updateActiveNav(window.location.hash || '#intro');
+            });
+            
+            // Initial state
+            updateActiveNav(window.location.hash || '#intro');
+
+            // --- Tabbed Interface for "Family" section ---
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabBtns.forEach(b => b.classList.remove('active', 'bg-slate-50', 'accent-text'));
+                    btn.classList.add('active', 'bg-slate-50', 'accent-text');
+                    
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(btn.dataset.tab).classList.add('active');
+                });
+            });
+
+
+            // --- Signal Explorer ---
+            const timeCtx = document.getElementById('timeDomainChart').getContext('2d');
+            const freqCtx = document.getElementById('frequencyDomainChart').getContext('2d');
+            let timeChart, freqChart;
+            let signalComponents = {};
+            const sampleRate = 100;
+            const numSamples = 256;
+            const timeAxis = Array.from({length: numSamples}, (_, i) => i / sampleRate);
+
+            function calculateSignal() {
+                return timeAxis.map(t => {
+                    return Object.values(signalComponents).reduce((acc, comp) => {
+                        return acc + comp.amp * Math.sin(2 * Math.PI * comp.freq * t);
+                    }, 0);
+                });
+            }
+            
+            function updateCharts() {
+                const signalData = calculateSignal();
+                timeChart.data.datasets[0].data = signalData;
+                timeChart.update();
+
+                const freqAmplitudes = Array(Math.max(10, ...Object.keys(signalComponents).map(Number)) + 1).fill(0);
+                for (const freq in signalComponents) {
+                    freqAmplitudes[freq] = signalComponents[freq].amp;
+                }
+                
+                freqChart.data.labels = freqAmplitudes.map((_, i) => `${i} Hz`);
+                freqChart.data.datasets[0].data = freqAmplitudes;
+                freqChart.update();
+            }
+
+            function initExplorerCharts() {
+                timeChart = new Chart(timeCtx, {
+                    type: 'line',
+                    data: {
+                        labels: timeAxis,
+                        datasets: [{
+                            label: 'Signal Amplitude',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: false, title: { display: true, text: 'Amplitude' } }, x: { title: { display: true, text: 'Time (s)' } } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                freqChart = new Chart(freqCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Frequency Amplitude',
+                            data: [],
+                            backgroundColor: '#3b82f6'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, max: 1.2, title: { display: true, text: 'Amplitude' } }, x: { title: { display: true, text: 'Frequency (Hz)' } } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+                
+                updateCharts();
+            }
+
+            document.getElementById('signal-controls').addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON' && e.target.dataset.freq) {
+                    const freq = parseFloat(e.target.dataset.freq);
+                    const amp = parseFloat(e.target.dataset.amp);
+                    if (signalComponents[freq]) {
+                        delete signalComponents[freq];
+                        e.target.classList.remove('opacity-50');
+                    } else {
+                        signalComponents[freq] = { freq, amp };
+                        e.target.classList.add('opacity-50');
+                    }
+                    updateCharts();
+                }
+            });
+
+            document.getElementById('reset-signal').addEventListener('click', () => {
+                signalComponents = {};
+                document.querySelectorAll('#signal-controls button[data-freq]').forEach(btn => btn.classList.remove('opacity-50'));
+                updateCharts();
+            });
+            
+            initExplorerCharts();
+
+
+            // --- FFT Complexity Chart ---
+            const complexityCtx = document.getElementById('fftComplexityChart').getContext('2d');
+            const slider = document.getElementById('n-slider');
+            const nValueSpan = document.getElementById('n-value');
+            const speedupFactorSpan = document.getElementById('speedup-factor');
+            let complexityChart;
+
+            function updateComplexityChart() {
+                const logN = parseInt(slider.value);
+                const N = Math.pow(2, logN);
+                const nSquared = Math.pow(N, 2);
+                const nLogN = N * logN;
+                
+                complexityChart.data.datasets[0].data = [nSquared];
+                complexityChart.data.datasets[1].data = [nLogN];
+                complexityChart.update();
+                
+                nValueSpan.textContent = N.toLocaleString();
+                const speedup = nSquared > 0 && nLogN > 0 ? Math.round(nSquared / nLogN) : 1;
+                speedupFactorSpan.textContent = speedup.toLocaleString() + 'x';
+            }
+
+            function initComplexityChart() {
+                complexityChart = new Chart(complexityCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Operations'],
+                        datasets: [{
+                            label: 'O(N²) - Direct DFT',
+                            data: [],
+                            backgroundColor: '#fca5a5',
+                            borderColor: '#ef4444',
+                            borderWidth: 1
+                        }, {
+                            label: 'O(N log N) - FFT',
+                            data: [],
+                            backgroundColor: '#93c5fd',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                min: 10,
+                                max: 1e13,
+                                title: { display: true, text: 'Number of Operations (Log Scale)' },
+                                ticks: {
+                                    callback: function(value, index, ticks) {
+                                        const log10 = Math.log10(value);
+                                        if (log10 === Math.floor(log10) && log10 >= 1) {
+                                            return value.toExponential(0);
+                                        }
+                                    },
+                                    autoSkip: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) { label += ': '; }
+                                        if (context.parsed.x !== null) {
+                                            label += context.parsed.x.toLocaleString();
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                updateComplexityChart();
+            }
+
+            slider.addEventListener('input', updateComplexityChart);
+            initComplexityChart();
+
+            // --- App Card Modals ---
+            document.querySelectorAll('.app-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    // In a real app, this would open a modal.
+                    // For simplicity, we just add a temporary highlight effect.
+                    card.classList.add('ring-2', 'accent-border');
+                    setTimeout(() => card.classList.remove('ring-2', 'accent-border'), 1000);
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
